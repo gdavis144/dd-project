@@ -157,95 +157,60 @@ CREATE TABLE producer_produces_song (
 
 -- PROCEDURES
 
--- returns all songs in the db
-DROP PROCEDURE IF EXISTS get_songs;
-DELIMITER //
-CREATE PROCEDURE get_songs()
-BEGIN
-	SELECT * from song ORDER BY date_added DESC;
-END //
-DELIMITER ;
+-- DROP PROCEDURE IF EXISTS get_songs;
+-- DELIMITER //
+-- CREATE PROCEDURE get_songs()
+-- BEGIN
+-- 	SELECT * from song ORDER BY date_added DESC;
+-- END //
+-- DELIMITER ;
 
--- adds a song to the database and marks that the corresponding artist created the song
-drop procedure if exists add_song;
-DELIMITER $$
-CREATE PROCEDURE add_song(
-	p_artist_id VARCHAR(255),
-    p_song_name VARCHAR(200),
-    p_length INT,
-    p_date_added DATE,
-    p_cover_image_link VARCHAR(600),
-    p_streaming_link VARCHAR(600),
-    p_is_explicit BOOLEAN,
-    p_album_id INT,
-    p_producer_email VARCHAR(255)
-)
+-- drop procedure if exists add_song;
+-- DELIMITER $$
+-- CREATE PROCEDURE add_song(
+-- 	p_artist_id VARCHAR(255),
+--     p_song_name VARCHAR(200),
+--     p_length INT,
+--     p_date_added DATE,
+--     p_cover_image_link VARCHAR(600),
+--     p_streaming_link VARCHAR(600),
+--     p_is_explicit BOOLEAN,
+--     p_album_id INT,
+--     p_producer_email VARCHAR(255)
+-- )
 
-BEGIN
-	DECLARE song_id int;
+-- BEGIN
+-- 	DECLARE song_id int;
     
-	IF p_artist_id not in (select artist_id from artist) THEN
-		SIGNAL SQLSTATE '45000'
-			SET MESSAGE_TEXT = 'Invalid artist'; 
-    ELSE 
-		INSERT INTO song (
-			song_name,
-			length,
-			date_added,
-			cover_image_link,
-			streaming_link,
-			is_explicit,
-			album_id,
-			Producer_email)
-		VALUES (
-			p_song_name,
-			p_length,
-			p_date_added,
-			p_cover_image_link,
-			p_streaming_link,
-			p_is_explicit,
-			p_album_id,
-			p_producer_email
-		);
-        SELECT LAST_INSERT_ID() INTO song_id;
-        INSERT INTO artist_creates_song(artist_id, sid) VALUES(p_artist_id, song_id);
-	END IF;
-END$$
-DELIMITER ;
+-- 	IF p_artist_id not in (select artist_id from artist) THEN
+-- 		SIGNAL SQLSTATE '45000'
+-- 			SET MESSAGE_TEXT = 'Invalid artist'; 
+--     ELSE 
+-- 		INSERT INTO song (
+-- 			song_name,
+-- 			length,
+-- 			date_added,
+-- 			cover_image_link,
+-- 			streaming_link,
+-- 			is_explicit,
+-- 			album_id,
+-- 			Producer_email)
+-- 		VALUES (
+-- 			p_song_name,
+-- 			p_length,
+-- 			p_date_added,
+-- 			p_cover_image_link,
+-- 			p_streaming_link,
+-- 			p_is_explicit,
+-- 			p_album_id,
+-- 			p_producer_email
+-- 		);
+--         SELECT LAST_INSERT_ID() INTO song_id;
+--         INSERT INTO artist_creates_song(artist_id, sid) VALUES(p_artist_id, song_id);
+-- 	END IF;
+-- END$$
+-- DELIMITER ;
 
--- marks that a user is following an artist
-DROP PROCEDURE IF EXISTS follow_artist;
-DELIMITER //
-CREATE PROCEDURE follow_artist(
-	p_artist_id INT,
-    p_username VARCHAR(255) 
-)
-BEGIN
-	IF 0 = (SELECT COUNT(*) from user_follows_artist where user_follows_artist.artist_id = p_artist_id and user_follows_artist.username = p_username)
-    then
-		insert into user_follows_artist values (p_artist_id, p_username);
-        update artist set artist.follower_count = artist.follower_count + 1;
-    end if;
-END //
-DELIMITER ;
-
--- marks that a user is no longer following an artist
-DROP PROCEDURE IF EXISTS unfollow_artist;
-DELIMITER //
-CREATE PROCEDURE unfollow_artist(
-	p_artist_id INT,
-    p_username VARCHAR(255) 
-)
-BEGIN
-	IF 0 <> (SELECT COUNT(*) from user_follows_artist where user_follows_artist.artist_id = p_artist_id and user_follows_artist.username = p_username)
-    then
-		delete from user_follows_artist where user_follows_artist.artist_id = p_artist_id and user_follows_artist.username = p_username;
-        update artist set artist.follower_count = artist.follower_count - 1;
-    end if;
-END //
-DELIMITER ;
-
--- populating tables with some basic data
 
 -- Insert data into the genre table
 INSERT INTO genre (genre_name) VALUES

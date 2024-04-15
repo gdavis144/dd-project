@@ -169,7 +169,7 @@ async function seedRevenue(client) {
 
 async function main() {
   const client = await db.connect();
-  var sql = fs.readFileSync('scripts/database.sql').toString();
+  var sql = fs.readFileSync('scripts/init_database.sql').toString();
   console.log(sql);
 
   // await seedUsers(client);
