@@ -1,21 +1,73 @@
+'use client';
+
 import AcmeLogo from '@/app/ui/acme-logo';
 import { ArrowRightIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
+import Image from 'next/image';
+import styles from '@/app/ui/home.module.css';
+// import * as mysql from 'mysql2';
+// import { useEffect, useState } from 'react';
+
+// interface TownJson extends mysql.RowDataPacket { town: String; state: String; }
+
+// async function getTowns(): Promise<Array<TownJson>> {
+//   const connection = mysql.createConnection({
+//     host: 'localhost',
+//     user: 'user',
+//     password: 'password',
+//     database: 'sharkdb',
+//   });
+
+//   connection.connect(function (err) {
+//     if (err) {
+//       return console.error('error: ' + err.message);
+//     }
+
+//     console.log('Connected to the MySQL server.');
+//   });
+
+//   let result = new Array();
+//   const query = 'SELECT town, state from township';
+
+//   await connection.promise().query<TownJson[]>(
+//     query).then(([results, fields]) => {
+//       result = results;
+//       console.log("reset");
+//       return results;
+//     });
+
+//   console.log("returned");
+//   console.log(result);
+//   return result;
+// }
 
 export default function Page() {
+  // const [townList, setTownList] = useState<TownJson[]>([]);
+  // useEffect(() => {
+  //   async function updateTowns() {
+  //     const towns = await getTowns();
+  //     setTownList(towns);
+  //   }
+  //   if (!townList) {
+  //     updateTowns();
+  //   }
+  // }, []);
+
   return (
     <main className="flex min-h-screen flex-col p-6">
       <div className="flex h-20 shrink-0 items-end rounded-lg bg-blue-500 p-4 md:h-52">
-        {/* <AcmeLogo /> */}
+        <AcmeLogo />
       </div>
       <div className="mt-4 flex grow flex-col gap-4 md:flex-row">
         <div className="flex flex-col justify-center gap-6 rounded-lg bg-gray-50 px-6 py-10 md:w-2/5 md:px-20">
+          <div className={styles.shape} />
           <p className={`text-xl text-gray-800 md:text-3xl md:leading-normal`}>
             <strong>Welcome to Acme.</strong> This is the example for the{' '}
             <a href="https://nextjs.org/learn/" className="text-blue-500">
               Next.js Learn Course
             </a>
             , brought to you by Vercel.
+            {/* <ul>{townList}</ul> */}
           </p>
           <Link
             href="/login"
@@ -26,6 +78,20 @@ export default function Page() {
         </div>
         <div className="flex items-center justify-center p-6 md:w-3/5 md:px-28 md:py-12">
           {/* Add Hero Images Here */}
+          <Image
+            src="/hero-desktop.png"
+            width={1000}
+            height={760}
+            className="hidden md:block"
+            alt="Screenshots of the dashboard project showing desktop version"
+          />
+          <Image
+            src="/hero-mobile.png"
+            width={560}
+            height={620}
+            className="sm:block md:hidden"
+            alt="Screenshots of the dashboard project showing desktop version"
+          />
         </div>
       </div>
     </main>
