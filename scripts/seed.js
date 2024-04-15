@@ -6,6 +6,7 @@ const {
   users,
 } = require('../app/lib/placeholder-data.js');
 const bcrypt = require('bcrypt');
+const fs = require('fs');
 
 async function seedUsers(client) {
   try {
@@ -129,30 +130,36 @@ async function seedRevenue(client) {
   try {
     // Create the "revenue" table if it doesn't exist
     const createTable = await client.sql`
-      CREATE TABLE IF NOT EXISTS revenue (
-        month VARCHAR(4) NOT NULL UNIQUE,
-        revenue INT NOT NULL
+      DROP TABLE IF EXISTS album;
+      CREATE TABLE album (
+        album_id serial primary key,
+        album_name varchar(200) not null,
+        album_image_link varchar(600)
       );
     `;
 
+    // CREATE TABLE IF NOT EXISTS album (
+    //   month VARCHAR(4) NOT NULL UNIQUE,
+    //   revenue INT NOT NULL
+    // );
     console.log(`Created "revenue" table`);
 
     // Insert data into the "revenue" table
-    const insertedRevenue = await Promise.all(
-      revenue.map(
-        (rev) => client.sql`
-        INSERT INTO revenue (month, revenue)
-        VALUES (${rev.month}, ${rev.revenue})
-        ON CONFLICT (month) DO NOTHING;
-      `,
-      ),
-    );
+    // const insertedRevenue = await Promise.all(
+    //   revenue.map(
+    //     (rev) => client.sql`
+    //     INSERT INTO revenue (month, revenue)
+    //     VALUES (${rev.month}, ${rev.revenue})
+    //     ON CONFLICT (month) DO NOTHING;
+    //   `,
+    //   ),
+    // );
 
-    console.log(`Seeded ${insertedRevenue.length} revenue`);
+    // console.log(`Seeded ${insertedRevenue.length} revenue`);
 
     return {
       createTable,
-      revenue: insertedRevenue,
+      // revenue: insertedRevenue,
     };
   } catch (error) {
     console.error('Error seeding revenue:', error);
@@ -162,12 +169,15 @@ async function seedRevenue(client) {
 
 async function main() {
   const client = await db.connect();
-  // var sql = fs.readFileSync('scripts/init_database.sql').toString();
+  var sql = fs.readFileSync('scripts/database.sql').toString();
+  console.log(sql);
 
   // await seedUsers(client);
   // await seedCustomers(client);
   // await seedInvoices(client);
-  await seedRevenue(client);
+  // await seedRevenue(client);
+
+  const createTable = await client.query(sql);
 
   await client.end();
 }
