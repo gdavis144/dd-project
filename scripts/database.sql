@@ -20,7 +20,8 @@ DROP TABLE IF EXISTS producer;
 create table album (
     album_id int auto_increment primary key,
     album_name varchar(200) not null,
-    album_image_link varchar(600)
+    album_image_link varchar(600),
+    is_explicit boolean not null default false
 );
 
 create table genre (
@@ -29,17 +30,18 @@ create table genre (
 
 # need to make subclass
 CREATE TABLE artist (
-	stage_name VARCHAR(255) PRIMARY KEY,
-	follower_count INT not null DEFAULT 0
+    artist_id INT PRIMARY KEY auto_increment,
+	stage_name VARCHAR(255) NOT NULL,
+	follower_count INT NOT null DEFAULT 0
 );
 
 CREATE TABLE user (
     username VARCHAR(255) PRIMARY KEY,
     email_address VARCHAR(255) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL UNIQUE,
+    artist_id INT NOT NULL,
     profile_image VARCHAR(600),      #image url    
-    stage_name VARCHAR(255),
-    foreign key (stage_name) references artist(stage_name) on update cascade on delete set null
+    foreign key (artist_id) references artist(artist_id) on update cascade on delete cascade
 );
 
 create table playlist(
@@ -47,7 +49,6 @@ create table playlist(
     playlist_name VARCHAR(24) not null,
     cover_image_url VARCHAR(600),
     like_count INT not null DEFAULT 0,
-    is_playlist boolean default false,
     is_public boolean default true,
     creator VARCHAR(255),
     foreign key (creator) references user(username) on update cascade on delete set null
@@ -77,14 +78,14 @@ create table song (
 );
 
 create table artist_creates_song (
-    primary key(sid, stage_name),
-    stage_name varchar(255) not null,
+    primary key(sid, artist_id),
+    artist_id int not null,
     sid int not null,
     foreign key (sid) 
 		references song(sid)
            on update cascade on delete cascade,
-    foreign key (stage_name) 
-		references artist(stage_name)
+    foreign key (artist_id) 
+		references artist(artist_id)
            on update cascade on delete cascade
 );
 
@@ -113,26 +114,26 @@ create table song_is_genre (
 );
 
 create table user_follows_artist (
-	primary key(username, stage_name),
-    stage_name varchar(255) not null,
+	primary key(username, artist_id),
+    artist_id int not null,
     username varchar(255) not null,
     foreign key (username) 
 		references user(username)
         on update cascade on delete cascade,
-    foreign key (stage_name) 
-		references artist(stage_name)
+    foreign key (artist_id) 
+		references artist(artist_id)
         on update cascade on delete cascade
 );
 
 create table artist_creates_album (
-	primary key(album_id, stage_name),
-    stage_name varchar(255) not null,
+	primary key(album_id, artist_id),
+    artist_id int not null,
     album_id int not null,
     foreign key (album_id) 
 		references album(album_id)
         on update cascade on delete cascade,
-    foreign key (stage_name) 
-		references artist(stage_name)
+    foreign key (artist_id) 
+		references artist(artist_id)
         on update cascade on delete cascade
 );
 
@@ -168,7 +169,7 @@ DELIMITER ;
 drop procedure if exists add_song;
 DELIMITER $$
 CREATE PROCEDURE add_song(
-	p_artist_name VARCHAR(255),
+	p_artist_id VARCHAR(255),
     p_song_name VARCHAR(200),
     p_length INT,
     p_date_added DATE,
@@ -182,7 +183,7 @@ CREATE PROCEDURE add_song(
 BEGIN
 	DECLARE song_id int;
     
-	IF p_artist_name not in (select stage_name from artist) THEN
+	IF p_artist_id not in (select artist_id from artist) THEN
 		SIGNAL SQLSTATE '45000'
 			SET MESSAGE_TEXT = 'Invalid artist'; 
     ELSE 
@@ -206,7 +207,7 @@ BEGIN
 			p_producer_email
 		);
         SELECT LAST_INSERT_ID() INTO song_id;
-        INSERT INTO artist_creates_song(stage_name, sid) VALUES(p_artist_name, song_id);
+        INSERT INTO artist_creates_song(artist_id, sid) VALUES(p_artist_id, song_id);
 	END IF;
 END$$
 DELIMITER ;
@@ -235,10 +236,10 @@ INSERT INTO producer (email_address, producer_name, company_name) VALUES
 ('producer3@email.com', 'Michael Johnson', 'Rhythm Studios');
 
 -- Insert data into the user table
-INSERT INTO user (username, email_address, password, profile_image) VALUES
-('user1', 'user1@email.com', 'password1', 'https://example.com/user1.jpg'),
-('user2', 'user2@email.com', 'password2', 'https://example.com/user2.jpg'),
-('user3', 'user3@email.com', 'password3', 'https://example.com/user3.jpg');
+INSERT INTO user (username, email_address, password, profile_image, artist_id) VALUES
+('user1', 'user1@email.com', 'password1', 'https://example.com/user1.jpg', 1),
+('user2', 'user2@email.com', 'password2', 'https://example.com/user2.jpg', 2),
+('user3', 'user3@email.com', 'password3', 'https://example.com/user3.jpg', 3);
 
 -- Insert data into the album table
 INSERT INTO album (album_name, album_image_link) VALUES
@@ -253,16 +254,16 @@ INSERT INTO song (song_name, length, date_added, cover_image_link, streaming_lin
 ('Swimming Pools (Drank)', 320, '2012-10-22', 'https://example.com/swimmingpools.jpg', 'https://music.example.com/swimmingpools', 3, 'producer3@email.com');
 
 -- Insert data into the artist_creates_song table
-INSERT INTO artist_creates_song (stage_name, sid) VALUES
-('The Beatles', 1),
-('Taylor Swift', 2),
-('Kendrick Lamar', 3);
+INSERT INTO artist_creates_song (artist_id, sid) VALUES
+(1, 1),
+(2, 2),
+(3, 3);
 
 -- Insert data into the playlist table
-INSERT INTO playlist (playlist_name, cover_image_url, like_count, is_playlist, is_public, creator) VALUES
-('My Playlist', 'https://example.com/myplaylist.jpg', 100, true, true, 'user1'),
-('Top Hits', 'https://example.com/tophits.jpg', 500, false, true, 'user2'),
-('Private Playlist', 'https://example.com/privateplaylist.jpg', 50, true, false, 'user3');
+INSERT INTO playlist (playlist_name, cover_image_url, like_count, is_public, creator) VALUES
+('My Playlist', 'https://example.com/myplaylist.jpg', 100, true, 'user1'),
+('Top Hits', 'https://example.com/tophits.jpg', 500, false, 'user2'),
+('Private Playlist', 'https://example.com/privateplaylist.jpg', 50, true, 'user3');
 
 -- Insert data into the playlist_contains_song table
 INSERT INTO playlist_contains_song (playlist_id, sid) VALUES
@@ -278,16 +279,16 @@ INSERT INTO song_is_genre (genre_name, sid) VALUES
 ('Hip Hop', 3);
 
 -- Insert data into the user_follows_artist table
-INSERT INTO user_follows_artist (username, stage_name) VALUES
-('user1', 'The Beatles'),
-('user2', 'Taylor Swift'),
-('user3', 'Kendrick Lamar');
+INSERT INTO user_follows_artist (username, artist_id) VALUES
+('user1', 3),
+('user2', 1),
+('user3', 2);
 
 -- Insert data into the artist_creates_album table
-INSERT INTO artist_creates_album (stage_name, album_id) VALUES
-('The Beatles', 1),
-('Taylor Swift', 2),
-('Kendrick Lamar', 3);
+INSERT INTO artist_creates_album (artist_id, album_id) VALUES
+(1, 1),
+(2, 2),
+(3, 3);
 
 -- Insert data into the user_likes_playlist table
 INSERT INTO user_likes_playlist (username, playlist_id) VALUES
