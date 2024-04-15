@@ -158,6 +158,7 @@ CREATE TABLE producer_produces_song (
 
 -- PROCEDURES
 
+-- returns all songs in the db
 DROP PROCEDURE IF EXISTS get_songs;
 DELIMITER //
 CREATE PROCEDURE get_songs()
@@ -166,6 +167,7 @@ BEGIN
 END //
 DELIMITER ;
 
+-- adds a song to the database and marks that the corresponding artist created the song
 drop procedure if exists add_song;
 DELIMITER $$
 CREATE PROCEDURE add_song(
@@ -212,6 +214,39 @@ BEGIN
 END$$
 DELIMITER ;
 
+-- marks that a user is following an artist
+DROP PROCEDURE IF EXISTS follow_artist;
+DELIMITER //
+CREATE PROCEDURE follow_artist(
+	p_artist_id INT,
+    p_username VARCHAR(255) 
+)
+BEGIN
+	IF 0 = (SELECT COUNT(*) from user_follows_artist where user_follows_artist.artist_id = p_artist_id and user_follows_artist.username = p_username)
+    then
+		insert into user_follows_artist values (p_artist_id, p_username);
+        update artist set artist.follower_count = artist.follower_count + 1;
+    end if;
+END //
+DELIMITER ;
+
+-- marks that a user is no longer following an artist
+DROP PROCEDURE IF EXISTS unfollow_artist;
+DELIMITER //
+CREATE PROCEDURE unfollow_artist(
+	p_artist_id INT,
+    p_username VARCHAR(255) 
+)
+BEGIN
+	IF 0 <> (SELECT COUNT(*) from user_follows_artist where user_follows_artist.artist_id = p_artist_id and user_follows_artist.username = p_username)
+    then
+		delete from user_follows_artist where user_follows_artist.artist_id = p_artist_id and user_follows_artist.username = p_username;
+        update artist set artist.follower_count = artist.follower_count - 1;
+    end if;
+END //
+DELIMITER ;
+
+-- populating tables with some basic data
 
 -- Insert data into the genre table
 INSERT INTO genre (genre_name) VALUES
