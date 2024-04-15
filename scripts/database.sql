@@ -1,25 +1,24 @@
-create database if not exists music;
-use music;
-
 drop table if exists artist_creates_song;
 drop table if exists producer_produces_song;
 drop table if exists song_is_genre;
-drop table if exists user_follows_artist;
+drop table if exists serial_follows_artist;
 drop table if exists artist_creates_album;
-DROP TABLE IF EXISTS user_likes_playlist;
+DROP TABLE IF EXISTS serial_likes_playlist;
 drop table if exists playlist_contains_song;
+drop table if exists user_likes_playlist;
+drop table if exists user_follows_artist;
 drop table if exists song;
 drop table if exists album;
 drop table if exists genre;
 drop table if exists playlist;
 drop table if exists friend_requests;
-DROP TABLE IF EXISTS user;
+DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS artist;
 DROP TABLE IF EXISTS producer;
 
 
 create table album (
-    album_id int auto_increment primary key,
+    album_id serial primary key,
     album_name varchar(200) not null,
     album_image_link varchar(600),
     is_explicit boolean not null default false
@@ -29,30 +28,30 @@ create table genre (
     genre_name VARCHAR(24) PRIMARY KEY
 );
 
-# need to make subclass
+-- need to make subclass
 CREATE TABLE artist (
-    artist_id INT PRIMARY KEY auto_increment,
+    artist_id serial PRIMARY KEY,
 	stage_name VARCHAR(255) NOT NULL,
 	follower_count INT NOT null DEFAULT 0
 );
 
-CREATE TABLE user (
+CREATE TABLE users (
     username VARCHAR(255) PRIMARY KEY,
     email_address VARCHAR(255) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL UNIQUE,
     artist_id INT NOT NULL,
-    profile_image VARCHAR(600),      #image url    
+    profile_image VARCHAR(600),      --image url    
     foreign key (artist_id) references artist(artist_id) on update cascade on delete cascade
 );
 
 create table playlist(
-    playlist_id INT PRIMARY KEY AUTO_INCREMENT,
+    playlist_id serial PRIMARY KEY,
     playlist_name VARCHAR(24) not null,
     cover_image_url VARCHAR(600),
     like_count INT not null DEFAULT 0,
     is_public boolean default true,
-    creator VARCHAR(255),
-    foreign key (creator) references user(username) on update cascade on delete set null
+    creator VARCHAR(255) not null,
+    foreign key (creator) references users(username) on update cascade on delete cascade
 );
 
 CREATE TABLE producer(
@@ -62,7 +61,7 @@ CREATE TABLE producer(
 );
 
 create table song (
-    sid int auto_increment primary key,
+    sid serial primary key,
     song_name varchar(200) not null,
     length int,
     date_added date not null,
@@ -119,7 +118,7 @@ create table user_follows_artist (
     artist_id int not null,
     username varchar(255) not null,
     foreign key (username) 
-		references user(username)
+		references users(username)
         on update cascade on delete cascade,
     foreign key (artist_id) 
 		references artist(artist_id)
@@ -142,7 +141,7 @@ CREATE TABLE user_likes_playlist (
 	username VARCHAR(255),
 	playlist_id INT,
 	PRIMARY KEY(username, playlist_id),
-	CONSTRAINT user_Like FOREIGN KEY (username) REFERENCES user(username)
+	CONSTRAINT user_Like FOREIGN KEY (username) REFERENCES users(username)
 ON DELETE CASCADE, 
 CONSTRAINT playlist_like FOREIGN KEY (playlist_id) REFERENCES playlist(playlist_id) ON DELETE CASCADE
 );
@@ -163,8 +162,8 @@ CREATE TABLE friend_requests (
     requestee VARCHAR(255),
     status ENUM('pending', 'accepted'),
     PRIMARY KEY (requester, requestee),
-    FOREIGN KEY (requester) REFERENCES user(username) ON DELETE CASCADE,
-    FOREIGN KEY (requestee) REFERENCES user(username) ON DELETE CASCADE
+    FOREIGN KEY (requester) REFERENCES users(username) ON DELETE CASCADE,
+    FOREIGN KEY (requestee) REFERENCES users(username) ON DELETE CASCADE
 );
 
 -- PROCEDURES
@@ -248,7 +247,7 @@ BEGIN
 END$$
 DELIMITER ;
 
--- adds in a user (creates a corresponding artist profile as well )
+-- adds in a users (creates a corresponding artist profile as well )
 drop procedure if exists AddUser;
 DELIMITER $$
 CREATE PROCEDURE AddUser(
@@ -260,17 +259,17 @@ CREATE PROCEDURE AddUser(
 )
 BEGIN
     -- Check if username or email already exists
-    IF (SELECT COUNT(*) FROM user WHERE username = p_username OR email_address = p_email) > 0 THEN
+    IF (SELECT COUNT(*) FROM users WHERE username = p_username OR email_address = p_email) > 0 THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Username or Email already exists';
     ELSE
 		INSERT INTO artist (stage_name) values (p_stage_name);
-        INSERT INTO user (username, email_address, password, artist_id, profile_image)
+        INSERT INTO users (username, email_address, password, artist_id, profile_image)
         VALUES (p_username, p_email, p_password, last_insert_id(), p_profile_image);
     END IF;
 END$$
 DELIMITER ;
 
--- deletes a user (and corresponding artist)
+-- deletes a users (and corresponding artist)
 drop procedure if exists DeleteUser;
 DELIMITER $$
 CREATE PROCEDURE DeleteUser(
@@ -278,18 +277,18 @@ CREATE PROCEDURE DeleteUser(
 )
 BEGIN
 	declare u_a_id INT;
-    -- Check if user exists
-    IF (SELECT COUNT(*) FROM user WHERE username = p_username) = 0 THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'User does not exist';
+    -- Check if users exists
+    IF (SELECT COUNT(*) FROM users WHERE username = p_username) = 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'users does not exist';
     ELSE
-		select user.artist_id into u_a_id from user where user.username = p_username;
+		select users.artist_id into u_a_id from users where users.username = p_username;
         DELETE FROM artist where artist.artist_id = u_a_id;
-        DELETE FROM user WHERE username = p_username;
+        DELETE FROM users WHERE username = p_username;
     END IF;
 END$$
 DELIMITER ;
 
--- marks that a user is following an artist
+-- marks that a users is following an artist
 DROP PROCEDURE IF EXISTS follow_artist;
 DELIMITER //
 CREATE PROCEDURE follow_artist(
@@ -305,7 +304,7 @@ BEGIN
 END //
 DELIMITER ;
 
--- marks that a user is no longer following an artist
+-- marks that a users is no longer following an artist
 DROP PROCEDURE IF EXISTS unfollow_artist;
 DELIMITER //
 CREATE PROCEDURE unfollow_artist(
@@ -333,7 +332,7 @@ CREATE PROCEDURE FollowUnfollowArtist(
 BEGIN
     -- Handling the follow action
     IF p_action = 'follow' THEN
-        -- Check if the user already follows the artist
+        -- Check if the users already follows the artist
         IF NOT EXISTS (
             SELECT * FROM user_follows_artist 
             WHERE username = p_username AND stage_name = p_stage_name
@@ -513,74 +512,74 @@ INSERT INTO artist (stage_name, follower_count) VALUES
 ('Luke Combs', 3200000),
 ('Daft Punk', 10500000);
 
--- Insert data into the producer table
+-- -- Insert data into the producer table
 INSERT INTO producer (email_address, producer_name, company_name) VALUES
 ('producer1@email.com', 'John Doe', 'Acme Records'),
 ('producer2@email.com', 'Jane Smith', 'Beats Inc.'),
 ('producer3@email.com', 'Michael Johnson', 'Rhythm Studios');
 
--- Insert data into the user table
-INSERT INTO user (username, email_address, password, profile_image, artist_id) VALUES
+-- -- Insert data into the users table
+INSERT INTO users (username, email_address, password, profile_image, artist_id) VALUES
 ('user1', 'user1@email.com', 'password1', 'https://example.com/user1.jpg', 1),
 ('user2', 'user2@email.com', 'password2', 'https://example.com/user2.jpg', 2),
-('user3', 'user3@email.com', 'password3', 'https://example.com/user3.jpg', 3);
+('user3', 'users@nextmail.com', '$2b$10$JEywJDlKlgy5ggzVLi6ZLetbrNzGZJp0.DKww4Qx1R0XqvmklAlm6', 'https://example.com/user3.jpg', 3);
 
--- Insert data into the album table
+-- -- Insert data into the album table
 INSERT INTO album (album_name, album_image_link) VALUES
-('Abbey Road', 'https://example.com/abbeyroad.jpg'),
+('Abbey Road', 'ttps://example.com/abbeyroad.jpg'),
 ('Folklore', 'https://example.com/folklore.jpg'),
 ('Good Kid, M.A.A.D City', 'https://example.com/gkmc.jpg');
 
--- Insert data into the song table
+-- -- Insert data into the song table
 INSERT INTO song (song_name, length, date_added, cover_image_link, streaming_link, album_id, producer_email) VALUES
 ('Hey Jude', 432, '1968-08-26', 'https://example.com/heyjude.jpg', 'https://music.example.com/heyjude', 1, 'producer1@email.com'),
 ('Cardigan', 237, '2020-07-24', 'https://example.com/cardigan.jpg', 'https://music.example.com/cardigan', 2, 'producer2@email.com'),
 ('Swimming Pools (Drank)', 320, '2012-10-22', 'https://example.com/swimmingpools.jpg', 'https://music.example.com/swimmingpools', 3, 'producer3@email.com');
 
--- Insert data into the artist_creates_song table
+-- -- Insert data into the artist_creates_song table
 INSERT INTO artist_creates_song (artist_id, sid) VALUES
 (1, 1),
 (2, 2),
 (3, 3);
 
--- Insert data into the playlist table
+-- -- Insert data into the playlist table
 INSERT INTO playlist (playlist_name, cover_image_url, like_count, is_public, creator) VALUES
 ('My Playlist', 'https://example.com/myplaylist.jpg', 100, true, 'user1'),
 ('Top Hits', 'https://example.com/tophits.jpg', 500, false, 'user2'),
 ('Private Playlist', 'https://example.com/privateplaylist.jpg', 50, true, 'user3');
 
--- Insert data into the playlist_contains_song table
+-- -- Insert data into the playlist_contains_song table
 INSERT INTO playlist_contains_song (playlist_id, sid) VALUES
 (1, 1),
 (1, 2),
 (2, 1),
 (2, 3);
 
--- Insert data into the song_is_genre table
+-- -- Insert data into the song_is_genre table
 INSERT INTO song_is_genre (genre_name, sid) VALUES
 ('Rock', 1),
 ('Pop', 2),
 ('Hip Hop', 3);
 
--- Insert data into the user_follows_artist table
+-- -- Insert data into the user_follows_artist table
 INSERT INTO user_follows_artist (username, artist_id) VALUES
 ('user1', 3),
 ('user2', 1),
 ('user3', 2);
 
--- Insert data into the artist_creates_album table
+-- -- Insert data into the artist_creates_album table
 INSERT INTO artist_creates_album (artist_id, album_id) VALUES
 (1, 1),
 (2, 2),
 (3, 3);
 
--- Insert data into the user_likes_playlist table
+-- -- Insert data into the user_likes_playlist table
 INSERT INTO user_likes_playlist (username, playlist_id) VALUES
 ('user1', 1),
 ('user2', 2),
 ('user3', 3);
 
--- Insert data into the producer_produces_song table
+-- -- Insert data into the producer_produces_song table
 INSERT INTO producer_produces_song (producer_email, song_id) VALUES
 ('producer1@email.com', 1),
 ('producer2@email.com', 2),
