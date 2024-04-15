@@ -1,1 +1,1 @@
-# dd-project
+# Digital Design Music Database Project
