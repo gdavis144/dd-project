@@ -12,6 +12,7 @@ drop table if exists song;
 drop table if exists album;
 drop table if exists genre;
 drop table if exists playlist;
+drop table if exists friend_requests;
 DROP TABLE IF EXISTS user;
 DROP TABLE IF EXISTS artist;
 DROP TABLE IF EXISTS producer;
@@ -156,6 +157,16 @@ CREATE TABLE producer_produces_song (
 	ON DELETE CASCADE
 );
 
+-- create a table for frined relationships
+CREATE TABLE friend_requests (
+    requester VARCHAR(255),
+    requestee VARCHAR(255),
+    status ENUM('pending', 'accepted'),
+    PRIMARY KEY (requester, requestee),
+    FOREIGN KEY (requester) REFERENCES user(username) ON DELETE CASCADE,
+    FOREIGN KEY (requestee) REFERENCES user(username) ON DELETE CASCADE
+);
+
 -- PROCEDURES
 
 -- returns all songs in the db
@@ -181,7 +192,6 @@ CREATE PROCEDURE add_song(
     p_album_id INT,
     p_producer_email VARCHAR(255)
 )
-
 BEGIN
 	DECLARE song_id int;
     
@@ -211,6 +221,71 @@ BEGIN
         SELECT LAST_INSERT_ID() INTO song_id;
         INSERT INTO artist_creates_song(artist_id, sid) VALUES(p_artist_id, song_id);
 	END IF;
+END$$
+DELIMITER ;
+
+-- deletes songs
+drop procedure if exists DeleteSong;
+DELIMITER $$
+CREATE PROCEDURE DeleteSong(
+    IN p_sid INT
+    )
+BEGIN
+	DECLARE album_id_var INT;
+    DECLARE num_album_songs INT;
+    SELECT album_id INTO album_id_var 
+    WHERE sid = p_sid;
+    DELETE FROM song WHERE sid = p_sid; # delete album if there are no more songs in it
+    IF album_id_var IS NOT NULL THEN 
+    SELECT COUNT(sid) INTO num_album_songs FROM song
+    WHERE album_id = album_id_var;
+		IF num_album_songs = 0 THEN 
+        DELETE FROM album 
+        WHERE album_id = album_id_var;
+        END IF;
+    END IF;
+    
+END$$
+DELIMITER ;
+
+-- adds in a user (creates a corresponding artist profile as well )
+drop procedure if exists AddUser;
+DELIMITER $$
+CREATE PROCEDURE AddUser(
+    IN p_username VARCHAR(255),
+    IN p_email VARCHAR(255),
+    IN p_password VARCHAR(255),
+    IN p_profile_image VARCHAR(600),
+    IN p_stage_name VARCHAR(255)
+)
+BEGIN
+    -- Check if username or email already exists
+    IF (SELECT COUNT(*) FROM user WHERE username = p_username OR email_address = p_email) > 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Username or Email already exists';
+    ELSE
+		INSERT INTO artist (stage_name) values (p_stage_name);
+        INSERT INTO user (username, email_address, password, artist_id, profile_image)
+        VALUES (p_username, p_email, p_password, last_insert_id(), p_profile_image);
+    END IF;
+END$$
+DELIMITER ;
+
+-- deletes a user (and corresponding artist)
+drop procedure if exists DeleteUser;
+DELIMITER $$
+CREATE PROCEDURE DeleteUser(
+    IN p_username VARCHAR(255)
+)
+BEGIN
+	declare u_a_id INT;
+    -- Check if user exists
+    IF (SELECT COUNT(*) FROM user WHERE username = p_username) = 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'User does not exist';
+    ELSE
+		select user.artist_id into u_a_id from user where user.username = p_username;
+        DELETE FROM artist where artist.artist_id = u_a_id;
+        DELETE FROM user WHERE username = p_username;
+    END IF;
 END$$
 DELIMITER ;
 
@@ -245,6 +320,180 @@ BEGIN
     end if;
 END //
 DELIMITER ;
+
+-- This one works via enum
+-- Procedure for following/unfollowing artist
+drop procedure if exists FollowUnfollowArtist;
+DELIMITER $$
+CREATE PROCEDURE FollowUnfollowArtist(
+    IN p_username VARCHAR(255),
+    IN p_stage_name VARCHAR(255),
+    IN p_action ENUM('follow', 'unfollow')
+)
+BEGIN
+    -- Handling the follow action
+    IF p_action = 'follow' THEN
+        -- Check if the user already follows the artist
+        IF NOT EXISTS (
+            SELECT * FROM user_follows_artist 
+            WHERE username = p_username AND stage_name = p_stage_name
+        ) THEN
+            -- Insert follow record
+            INSERT INTO user_follows_artist (username, stage_name)
+            VALUES (p_username, p_stage_name);
+		ELSE 
+         -- Signal error: already following
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Already following artist';
+        END IF;
+	ELSE 
+		IF EXISTS (
+            SELECT * FROM user_follows_artist 
+            WHERE username = p_username AND stage_name = p_stage_name
+        ) THEN
+			DELETE FROM user_follows_artist
+			WHERE username = p_username AND stage_name = p_stage_name;
+		ELSE 
+			-- Signal error: Not following and cannot unfollow 
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'You are not following this artist';
+		END IF; 
+	END IF; 
+END$$
+DELIMITER ;
+
+-- procedure for album 
+drop procedure if exists AddAlbum;
+DELIMITER $$
+CREATE PROCEDURE AddAlbum(
+    IN p_album_name VARCHAR(200),
+    IN p_album_image_link VARCHAR(600),
+    IN p_is_explicit boolean,
+    IN p_stage_name VARCHAR(255),
+    IN song_ids TEXT
+)
+BEGIN
+    DECLARE album_exists INT;
+	-- Insert the new album
+	INSERT INTO album (album_name, album_image_link)
+	VALUES (p_album_name, p_album_image_link);
+
+	-- If an artist's name is provided, link the album to the artist
+	IF p_stage_name IS NOT NULL AND p_stage_name <> '' THEN
+		INSERT INTO artist_creates_album (album_id, stage_name)
+		VALUES (LAST_INSERT_ID(), p_stage_name);
+		
+	END IF;
+	IF song_ids IS NOT NULL AND song_ids <> '' THEN
+		UPDATE song SET album_id = LAST_INSERT_ID()
+		WHERE FIND_IN_SET(sid, song_ids) > 0 ;
+	ELSE 
+	SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'song ids cannot be empty';
+	END IF; 
+END
+$$
+DELIMITER ;
+
+
+
+
+-- Procedure for Sending a Friend Request
+drop procedure if exists SendFriendRequest;
+DELIMITER $$
+
+CREATE PROCEDURE SendFriendRequest(
+    IN p_requester VARCHAR(255),
+    IN p_requestee VARCHAR(255)
+)
+BEGIN
+    DECLARE existing_count INT;
+
+    -- Check if there's already a request or a friendship
+    SELECT COUNT(*) INTO existing_count FROM friend_requests 
+    WHERE (requester = p_requester AND requestee = p_requestee)
+       OR (requester = p_requestee AND requestee = p_requester);
+
+
+    IF existing_count = 0 THEN
+        -- Insert new friend request
+        INSERT INTO friend_requests (requester, requestee, status)
+        VALUES (p_requester, p_requestee, 'pending');
+    ELSE
+        -- Signal error: a request is already pending or a friendship exists
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'A request already exists or users are already friends';
+    END IF;
+END$$
+
+DELIMITER ;
+
+-- Procedure for Accepting a Friend Request
+drop procedure if exists AcceptFriendRequest;
+
+DELIMITER $$
+
+CREATE PROCEDURE AcceptFriendRequest(
+    IN p_requester VARCHAR(255),
+    IN p_requestee VARCHAR(255)
+)
+BEGIN
+    -- Check if there is a pending request from requester to requestee
+    IF EXISTS (SELECT 1 FROM friend_requests 
+               WHERE requester = p_requester AND requestee = p_requestee AND status = 'pending') THEN
+        -- Update the friend request to accepted
+        UPDATE friend_requests SET status = 'accepted'
+        WHERE requester = p_requester AND requestee = p_requestee;
+    ELSE
+        -- Signal error: no valid pending friend request
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No pending friend request to accept';
+    END IF;
+END$$
+
+DELIMITER ;
+drop procedure if exists DeclineFriendRequest;
+
+DELIMITER $$
+CREATE PROCEDURE DeclineFriendRequest(
+	IN p_requester VARCHAR(255),
+	IN p_requestee VARCHAR(255)
+)
+BEGIN 
+	DELETE FROM friend_requests 
+    WHERE requester = p_requester 
+    AND requestee = p_requestee ;
+END $$
+    
+DELIMITER ;
+    
+drop procedure if exists AddingSongToPlaylist;
+DELIMITER $$
+CREATE PROCEDURE AddingSongToPlaylist( 
+    IN p_sid INT,
+    IN p_playlist_id INT
+)
+BEGIN 
+    -- Check if the song already exists in the playlist
+    IF NOT EXISTS (
+        SELECT * FROM playlist_contains_song
+        WHERE sid = p_sid AND playlist_id = p_playlist_id
+    ) THEN
+        -- Check if the playlist exists
+        IF EXISTS (
+            SELECT * FROM playlist
+            WHERE playlist_id = p_playlist_id
+        ) THEN
+            -- Insert the song into the playlist
+            INSERT INTO playlist_contains_song (playlist_id, sid)
+            VALUES (p_playlist_id, p_sid);
+        ELSE
+            -- Signal an error if the playlist does not exist
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Playlist does not exist';
+        END IF;
+    ELSE
+        -- Signal an error if the song is already in the playlist
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Song already in playlist';
+    END IF;
+END$$
+
+DELIMITER ;
+
 
 -- populating tables with some basic data
 
