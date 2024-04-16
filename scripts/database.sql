@@ -1,9 +1,7 @@
 drop table if exists artist_creates_song;
 drop table if exists producer_produces_song;
 drop table if exists song_is_genre;
-drop table if exists serial_follows_artist;
 drop table if exists artist_creates_album;
-DROP TABLE IF EXISTS serial_likes_playlist;
 drop table if exists playlist_contains_song;
 drop table if exists user_likes_playlist;
 drop table if exists user_follows_artist;
@@ -15,10 +13,45 @@ drop table if exists friend_requests;
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS artist;
 DROP TABLE IF EXISTS producer;
+/*
+Tables in this schema:
 
+    album(album_id: int, album_name: varchar(200), album_image_link: varchar(600), is_explicit: bool) -- stores records of albums
+    genre(genre_name: varchar(24)) -- stores different music genres
+    artist(artist_id: int, stage_name: varchar(255), follower_count: int) -- stores artist profiles
+    users(username: varchar(255), email_address: varchar(255), password: varchar(255), artist_id: int, profile_image: varchar(600)) -- stores user accounts mapped to artist profiles
+    playlist(playlist_id: int, playlist_name: varchar(24), cover_image_url: varchar(600), like_count: int, is_public: bool, creator: varchar(255)) -- stores user playlists
+    producer(email_address: varchar(255), producer_name: varchar(255), company_name: varchar(255)) -- stores producer profiles
+    song(sid: int, song_name: varchar(200), length: int, date_added: date, cover_image_link: varchar(600), streaming_link: varchar(600), album_id: int, producer_email: varchar(255)) -- stores song details
+    artist_creates_song(artist_id: int, sid: int) -- maps artists to the songs they created
+    playlist_contains_song(playlist_id: int, sid: int) -- maps songs to the playlists they are included in
+    song_is_genre(genre_name: varchar(24), sid: int) -- maps songs to their genres
+    user_follows_artist(username: varchar(255), artist_id: int) -- tracks which users follow which artists
+    artist_creates_album(album_id: int, artist_id: int) -- maps albums to the artists who created them
+    user_likes_playlist(username: varchar(255), playlist_id: int) -- tracks which users liked which playlists
+    producer_produces_song(producer_email: varchar(255), song_id: int) -- maps producers to the songs they produced
+    friend_requests(requester: varchar(255), requestee: varchar(255), status: enum('pending', 'accepted')) -- stores friend requests between users
+*/
+
+-- Procedures:
+/*
+    get_songs() -- returns all songs in the database ordered by date_added descending
+    add_song(p_artist_id, p_song_name, ...) -- adds a new song to the database and maps it to the specified artist
+    DeleteSong(p_sid) -- deletes the specified song and its associated album if it was the last song in that album
+    AddUser(p_username, p_email, p_password, p_profile_image, p_stage_name) -- adds a new user account and creates an associated artist profile
+    DeleteUser(p_username) -- deletes the specified user account and their associated artist profile
+    follow_artist(p_artist_id, p_username) -- marks that the specified user is following the specified artist
+    unfollow_artist(p_artist_id, p_username) -- marks that the specified user is no longer following the specified artist
+    FollowUnfollowArtist(p_username, p_stage_name, p_action) -- follows or unfollows an artist based on the specified action ('follow' or 'unfollow')
+    AddAlbum(p_album_name, p_album_image_link, p_is_explicit, p_stage_name, song_ids) -- adds a new album and optionally links it to an artist and existing songs
+    SendFriendRequest(p_requester, p_requestee) -- sends a friend request from one user to another
+    AcceptFriendRequest(p_requester, p_requestee) -- accepts a pending friend request between two users
+    DeclineFriendRequest(p_requester, p_requestee) -- declines a pending friend request between two users
+    AddingSongToPlaylist(p_sid, p_playlist_id) -- adds a song to the specified playlist if it doesn't already exist in that playlist
+*/
 
 create table album (
-    album_id serial primary key,
+    album_id int primary key auto_increment,
     album_name varchar(200) not null,
     album_image_link varchar(600),
     is_explicit boolean not null default false
@@ -30,7 +63,7 @@ create table genre (
 
 -- need to make subclass
 CREATE TABLE artist (
-    artist_id serial PRIMARY KEY,
+    artist_id int PRIMARY KEY auto_increment,
 	stage_name VARCHAR(255) NOT NULL,
 	follower_count INT NOT null DEFAULT 0
 );
@@ -39,13 +72,13 @@ CREATE TABLE users (
     username VARCHAR(255) PRIMARY KEY,
     email_address VARCHAR(255) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL UNIQUE,
-    artist_id INT NOT NULL,
-    profile_image VARCHAR(600),      --image url    
+    artist_id int NOT NULL, -- we needed to insert auto_increment to avoid errors
+    profile_image VARCHAR(600),      -- image url    
     foreign key (artist_id) references artist(artist_id) on update cascade on delete cascade
 );
 
 create table playlist(
-    playlist_id serial PRIMARY KEY,
+    playlist_id int PRIMARY KEY auto_increment,
     playlist_name VARCHAR(24) not null,
     cover_image_url VARCHAR(600),
     like_count INT not null DEFAULT 0,
@@ -61,7 +94,7 @@ CREATE TABLE producer(
 );
 
 create table song (
-    sid serial primary key,
+    sid int primary key auto_increment,
     song_name varchar(200) not null,
     length int,
     date_added date not null,
@@ -268,7 +301,6 @@ BEGIN
     END IF;
 END$$
 DELIMITER ;
-
 -- deletes a users (and corresponding artist)
 drop procedure if exists DeleteUser;
 DELIMITER $$
