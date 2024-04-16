@@ -7,6 +7,10 @@ const {
 } = require('../app/lib/placeholder-data.js');
 const bcrypt = require('bcrypt');
 const fs = require('fs');
+require('dotenv').config();
+const mysql = require('mysql2');
+const sql = require('mssql');
+// const { config } = require('dotenv');
 
 async function seedUsers(client) {
   try {
@@ -167,19 +171,75 @@ async function seedRevenue(client) {
   }
 }
 
+var config = {
+  host: 'music-s.mysql.database.azure.com',
+  user: 'User1',
+  password: 'Password1',
+  database: 'music-database',
+  port: 3306,
+  multipleStatements: true,
+  ssl: { ca: fs.readFileSync('DigiCertGlobalRootCA.crt.pem') },
+};
+
 async function main() {
-  const client = await db.connect();
-  var sql = fs.readFileSync('scripts/init_database.sql').toString();
-  console.log(sql);
+  const conn = new mysql.createConnection({
+    host: process.env.HOST,
+    user: process.env.USER,
+    password: process.env.PASSWORD,
+    database: 'music',
+  });
 
-  // await seedUsers(client);
-  // await seedCustomers(client);
-  // await seedInvoices(client);
-  // await seedRevenue(client);
+  // const conn = new mysql.createConnection(config);
 
-  const createTable = await client.query(sql);
+  conn.connect(function (err) {
+    if (err) {
+      console.log('Cannot connect, Error:');
+      throw err;
+    } else {
+      console.log('Connection established.');
+      // queryDatabase(conn);
+      conn.end()
+    }
+  });
+}
 
-  await client.end();
+function queryDatabase(conn) {
+  conn.query(fs.readFileSync('scripts/database.sql').toString().replaceAll('\r\n', ' ').replaceAll('\t', ' '),
+    function (err, results, fields) {
+      if (err) {
+        console.error(err);
+      } else {
+        console.log('Created database.');
+      }
+    },
+  );
+
+  conn.query(`-- @DELIMITER //  drop table song//`,
+    function (err, results, fields) {
+      if (err) {
+        console.error(err);
+      } else {
+        console.log(results);
+      }
+    },
+  );
+
+  conn.query('select * from song;',
+    function (err, results, fields) {
+      if (err) {
+        console.error(err);
+      } else {
+        console.log(results);
+      }
+    },
+  );
+
+  conn.end(function (err) {
+    if (err) {
+      console.error(err);
+    }
+    console.log('Done.');
+  });
 }
 
 main().catch((err) => {

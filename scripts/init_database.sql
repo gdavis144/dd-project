@@ -1,9 +1,7 @@
 drop table if exists artist_creates_song;
 drop table if exists producer_produces_song;
 drop table if exists song_is_genre;
-drop table if exists serial_follows_artist;
 drop table if exists artist_creates_album;
-DROP TABLE IF EXISTS serial_likes_playlist;
 drop table if exists playlist_contains_song;
 drop table if exists user_likes_playlist;
 drop table if exists user_follows_artist;
@@ -157,13 +155,14 @@ CREATE TABLE producer_produces_song (
 
 -- PROCEDURES
 
--- DROP PROCEDURE IF EXISTS get_songs;
--- DELIMITER //
--- CREATE PROCEDURE get_songs()
--- BEGIN
--- 	SELECT * from song ORDER BY date_added DESC;
--- END //
--- DELIMITER ;
+DROP PROCEDURE IF EXISTS get_songs;
+CREATE PROCEDURE get_songs()
+LANGUAGE sql
+AS $$
+BEGIN
+	SELECT * from song ORDER BY date_added DESC;
+END$$
+;
 
 -- drop procedure if exists add_song;
 -- DELIMITER $$
