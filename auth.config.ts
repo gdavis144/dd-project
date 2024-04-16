@@ -16,6 +16,13 @@ export const authConfig = {
       }
       return true;
     },
+    session: ({ session, token}) => ({
+        ...session,
+        user: {
+            ...session.user,
+            id: token.sub,
+        }
+    }),
   },
   providers: [], // Add providers with an empty array for now
   secret: process.env.JWT_SECRET,

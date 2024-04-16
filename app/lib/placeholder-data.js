@@ -12,7 +12,7 @@ const users = [
 const customers = [
   {
     id: '3958dc9e-712f-4377-85e9-fec4b6a6442a',
-    name: 'Delba de Oliveira',
+    name: 'Delbat de Oliveira',
     email: 'delba@oliveira.com',
     image_url: '/customers/delba-de-oliveira.png',
   },
@@ -72,7 +72,7 @@ const customers = [
   },
 ];
 
-const invoices = [
+const songs = [
   {
     customer_id: customers[0].id,
     amount: 15795,
@@ -183,6 +183,6 @@ const revenue = [
 module.exports = {
   users,
   customers,
-  invoices,
+  songs,
   revenue,
 };

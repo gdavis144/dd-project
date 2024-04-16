@@ -16,41 +16,35 @@ export type Customer = {
   image_url: string;
 };
 
-export type Invoice = {
-  id: string; // Will be created on the database
-  customer_id: string;
-  amount: number; // Stored in cents
-  status: 'pending' | 'paid';
-  date: string;
-};
-
 export type Revenue = {
   month: string;
   revenue: number;
 };
 
-export type LatestInvoice = {
-  id: string;
-  name: string;
-  image_url: string;
-  email: string;
-  amount: string;
+export type Song = {
+  sid: number;
+  song_name: string;
+  length: number;
+  date_added: Date;
+  cover_image_link: string;
+  streaming_link: string;
+  album_id: number;
+  producer_email: string;
 };
 
 // The database returns a number for amount, but we later format it to a string with the formatCurrency function
-export type LatestInvoiceRaw = Omit<LatestInvoice, 'amount'> & {
+export type LatestSongRaw = Omit<Song, 'amount'> & {
   amount: number;
 };
 
-export type InvoicesTable = {
-  id: string;
-  customer_id: string;
-  name: string;
-  email: string;
-  image_url: string;
-  date: string;
-  amount: number;
-  status: 'pending' | 'paid';
+export type Artist = {
+  artist_id: number;
+  stage_name: string;
+    follower_count: number;
+    username?: string;
+    email_address?: string;
+    password?: string;
+    profile_image?: string;
 };
 
 export type CustomersTableType = {
@@ -78,7 +72,7 @@ export type CustomerField = {
   name: string;
 };
 
-export type InvoiceForm = {
+export type SongForm = {
   id: string;
   customer_id: string;
   amount: number;

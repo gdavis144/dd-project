@@ -3,13 +3,36 @@ import { unstable_noStore as noStore } from 'next/cache';
 import {
   CustomerField,
   CustomersTableType,
-  InvoiceForm,
-  InvoicesTable,
-  LatestInvoiceRaw,
+  SongForm,
+  Song,
+  LatestSongRaw,
   User,
   Revenue,
 } from './definitions';
 import { formatCurrency } from './utils';
+import * as mysql from 'mysql2';
+
+export async function executeProcedure(
+  procedureCall: string,
+): Promise<mysql.QueryResult> {
+  const conn = mysql.createConnection({
+    host: process.env.HOST,
+    user: process.env.USER,
+    password: process.env.PASSWORD,
+    database: 'music',
+  });
+
+  try {
+    await conn.promise().connect();
+    const data = await conn.promise().execute(procedureCall);
+    conn.end();
+    return data[0];
+  } catch (err: any) {
+    console.log('Cannot connect, Error: ' + err.message);
+    conn.end();
+    return [];
+  }
+}
 
 export async function fetchRevenue() {
   // Add noStore() here to prevent the response from being cached.
@@ -25,126 +48,121 @@ export async function fetchRevenue() {
   }
 }
 
-export async function fetchLatestInvoices() {
+export async function fetchLatestSongs() {
   noStore();
   try {
-    const data = await sql<LatestInvoiceRaw>`
-      SELECT invoices.amount, customers.name, customers.image_url, customers.email, invoices.id
-      FROM invoices
-      JOIN customers ON invoices.customer_id = customers.id
-      ORDER BY invoices.date DESC
-      LIMIT 5`;
-
-    const latestInvoices = data.rows.map((invoice) => ({
-      ...invoice,
-      amount: formatCurrency(invoice.amount),
-    }));
-    return latestInvoices;
+    const data = (await executeProcedure(`CALL get_songs();`)) as Song[];
+    return data[0];
   } catch (error) {
     console.error('Database Error:', error);
-    throw new Error('Failed to fetch the latest invoices.');
+    throw new Error('Failed to fetch the latest songs.');
   }
 }
 
-export async function fetchCardData() {
+export async function fetchArtistById(artist_id: number) {
   noStore();
   try {
-    // You can probably combine these into a single SQL query
-    // However, we are intentionally splitting them to demonstrate
-    // how to initialize multiple queries in parallel with JS.
-    const invoiceCountPromise = sql`SELECT COUNT(*) FROM invoices`;
-    const customerCountPromise = sql`SELECT COUNT(*) FROM customers`;
-    const invoiceStatusPromise = sql`SELECT
-         SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END) AS "paid",
-         SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END) AS "pending"
-         FROM invoices`;
-
-    const data = await Promise.all([
-      invoiceCountPromise,
-      customerCountPromise,
-      invoiceStatusPromise,
-    ]);
-
-    const numberOfInvoices = Number(data[0].rows[0].count ?? '0');
-    const numberOfCustomers = Number(data[1].rows[0].count ?? '0');
-    const totalPaidInvoices = formatCurrency(data[2].rows[0].paid ?? '0');
-    const totalPendingInvoices = formatCurrency(data[2].rows[0].pending ?? '0');
-
-    return {
-      numberOfCustomers,
-      numberOfInvoices,
-      totalPaidInvoices,
-      totalPendingInvoices,
-    };
+    const data = (await executeProcedure(
+      `SELECT * from artist left join user on artist.artist_id = user.artist_id where artist.artist_id = ${artist_id}`,
+    ));
+    return data;
   } catch (error) {
     console.error('Database Error:', error);
-    throw new Error('Failed to fetch card data.');
+    throw new Error('Failed to fetch artist.');
   }
+}
+
+export async function fetchArtistSongs(artist_id: number) {
+  noStore();
+  try {
+    const data = (await executeProcedure(
+      `SELECT * from artist_creates_song left join song on artist_creates_song.sid = song.sid where artist_creates_song.artist_id = ${artist_id}`,
+    ));
+    return data;
+  } catch (error) {
+    console.error('Database Error:', error);
+    throw new Error('Failed to fetch artist.');
+  }
+}
+
+export async function fetchUserPlaylists() {
+  noStore();
+  // try {
+  //   const songCountPromise = sql`SELECT COUNT(*) FROM invoices`;
+  //   const customerCountPromise = sql`SELECT COUNT(*) FROM customers`;
+  //   const invoiceStatusPromise = sql`SELECT
+  //        SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END) AS "paid",
+  //        SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END) AS "pending"
+  //        FROM invoices`;
+
+  //   const data = await Promise.all([
+  //     songCountPromise,
+  //     customerCountPromise,
+  //     invoiceStatusPromise,
+  //   ]);
+
+  //   const numberOfSongs = Number(data[0].rows[0].count ?? '0');
+  //   const numberOfCustomers = Number(data[1].rows[0].count ?? '0');
+  //   const totalPaidInvoices = formatCurrency(data[2].rows[0].paid ?? '0');
+  //   const totalPendingInvoices = formatCurrency(data[2].rows[0].pending ?? '0');
+
+  //   return {
+  //     numberOfCustomers,
+  //     numberOfSongs,
+  //     totalPaidInvoices,
+  //     totalPendingInvoices,
+  //   };
+  // } catch (error) {
+  //   console.error('Database Error:', error);
+  //   throw new Error('Failed to fetch card data.');
+  // }
 }
 
 const ITEMS_PER_PAGE = 6;
-export async function fetchFilteredInvoices(
-  query: string,
-  currentPage: number,
-) {
+export async function fetchFilteredSongs(query: string, currentPage: number) {
   noStore();
   const offset = (currentPage - 1) * ITEMS_PER_PAGE;
 
   try {
-    const invoices = await sql<InvoicesTable>`
+    const q = `
       SELECT
-        invoices.id,
-        invoices.amount,
-        invoices.date,
-        invoices.status,
-        customers.name,
-        customers.email,
-        customers.image_url
-      FROM invoices
-      JOIN customers ON invoices.customer_id = customers.id
-      WHERE
-        customers.name ILIKE ${`%${query}%`} OR
-        customers.email ILIKE ${`%${query}%`} OR
-        invoices.amount::text ILIKE ${`%${query}%`} OR
-        invoices.date::text ILIKE ${`%${query}%`} OR
-        invoices.status ILIKE ${`%${query}%`}
-      ORDER BY invoices.date DESC
+        song.*,
+        artist.*
+        FROM artist_creates_song
+        JOIN song ON artist_creates_song.sid = song.sid
+        JOIN artist on artist_creates_song.artist_id = artist.artist_id
+        WHERE
+          artist.stage_name LIKE '${`%${query}%`}' OR
+          song.song_name LIKE '${`%${query}%`}'
+      ORDER BY song.date_added DESC
       LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}
     `;
 
-    return invoices.rows;
+    const data = await executeProcedure(q);
+
+    return data;
   } catch (error) {
     console.error('Database Error:', error);
-    throw new Error('Failed to fetch invoices.');
+    throw new Error('Failed to fetch songs.');
   }
 }
 
-export async function fetchInvoicesPages(query: string) {
+export async function fetchSongsPages(query: string) {
   noStore();
   try {
-    const count = await sql`SELECT COUNT(*)
-    FROM invoices
-    JOIN customers ON invoices.customer_id = customers.id
-    WHERE
-      customers.name ILIKE ${`%${query}%`} OR
-      customers.email ILIKE ${`%${query}%`} OR
-      invoices.amount::text ILIKE ${`%${query}%`} OR
-      invoices.date::text ILIKE ${`%${query}%`} OR
-      invoices.status ILIKE ${`%${query}%`}
-  `;
-
-    const totalPages = Math.ceil(Number(count.rows[0].count) / ITEMS_PER_PAGE);
+    const data = fetchFilteredSongs.length;
+    const totalPages = Math.ceil(Number(data) / ITEMS_PER_PAGE);
     return totalPages;
   } catch (error) {
     console.error('Database Error:', error);
-    throw new Error('Failed to fetch total number of invoices.');
+    throw new Error('Failed to fetch total number of song pages.');
   }
 }
 
 export async function fetchInvoiceById(id: string) {
   noStore();
   try {
-    const data = await sql<InvoiceForm>`
+    const data = await sql<SongForm>`
       SELECT
         invoices.id,
         invoices.customer_id,
