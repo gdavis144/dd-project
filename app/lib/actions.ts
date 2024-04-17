@@ -12,23 +12,25 @@ const FormSchema = z.object({
   song_name: z.string({
     invalid_type_error: 'Please enter a song name.',
   }),
-  cover_image_link: z.string({
-    invalid_type_error: 'Please select a cover image.',
-  }),
   length: z.coerce.number().gt(0, {
     message: 'Please enter a length in seconds.' 
   }),
+  cover_image_link: z.string({
+    invalid_type_error: 'Please select a cover image.',
+  }).optional(),
   streaming_link: z.string({
     invalid_type_error: 'Please enter a streaming link.',
-  }),
-  album_id: z.coerce.number().gt(0, { message: 'Please enter a valid album.' }),
+  }).optional(),
+  album_id: z.coerce.number().gt(0, { message: 'Please enter a valid album.' }).optional(),
 });
 
 export type State = {
   errors?: {
-    customerId?: string[];
-    amount?: string[];
-    status?: string[];
+    song_name?: string[];
+    length?: string[];
+    cover_image_link?: string[];
+    streaming_link?: string[];
+    album_id?: string[];
   };
   message?: string | null;
 };
@@ -39,6 +41,7 @@ export async function createSong(prevState: State, formData: FormData) {
   // Validate form using Zod
   const validatedFields = CreateInvoice.safeParse({
     song_name: formData.get('song_name'),
+    length: formData.get('length'),
     cover_image_link: formData.get('cover_image_link'),
     streaming_link: formData.get('streaming_link'),
   });
@@ -47,18 +50,19 @@ export async function createSong(prevState: State, formData: FormData) {
   if (!validatedFields.success) {
     return {
       errors: validatedFields.error.flatten().fieldErrors,
-      message: 'Missing Fields. Failed to Create Invoice.',
+      message: 'Missing Fields. Failed to Create Song.',
     };
   }
 
   // Prepare data for insertion into the database
-  const { song_name, cover_image_link, streaming_link } = validatedFields.data;
+  const { song_name, length, cover_image_link, streaming_link, album_id } = validatedFields.data;
   const date = new Date().toISOString().split('T')[0];
 
   // Insert data into the database
   try {
-    await executeProcedure(`INSERT INTO song (song_name, length, date_added, streaming_link) VALUES
-    (${song_name}, ${length}, ${date}, ${streaming_link});`)
+    console.log({ song_name, length, cover_image_link, streaming_link, album_id });
+    await executeProcedure(`
+    (${song_name}, ${length}, ${date}, ${cover_image_link? cover_image_link: null}, ${streaming_link? streaming_link: null}, ${album_id? album_id : null});`)
   } catch (error) {
     // If a database error occurs, return a more specific error.
     return {
@@ -77,11 +81,13 @@ export async function updateSong(id: string, formData: FormData) {
   const {
     song_name,
     cover_image_link,
+    length,
     streaming_link,
     album_id,
   } = UpdateSong.parse({
     song_name: formData.get('song_name'),
     cover_image_link: formData.get('cover_image_link'),
+    length: formData.get('length'),
     streaming_link: formData.get('streaming_link'),
     album_id: formData.get('album_id'),
   });
@@ -89,7 +95,7 @@ export async function updateSong(id: string, formData: FormData) {
   try {
     await sql`
           UPDATE song
-          SET song_name = ${song_name}, cover_image_link = ${cover_image_link}, streaming_link = ${streaming_link},
+          SET length = ${length}, song_name = ${song_name}, cover_image_link = ${cover_image_link}, streaming_link = ${streaming_link},
           album_id = ${album_id}
           WHERE id = ${id}
         `;
