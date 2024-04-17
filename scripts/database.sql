@@ -249,12 +249,6 @@ BEGIN
 END //
 DELIMITER ;
 
-select * from genre;
-select * from song_is_genre;
-select * from song;
-# call mark_songs_genre_by_artist(112, 'canadian contemporary r&b');
-# call mark_songs_genre_by_artist(1, 'wtf');
-
 drop procedure if exists add_song;
 DELIMITER $$
 CREATE PROCEDURE add_song(
@@ -331,8 +325,8 @@ BEGIN
 	INSERT INTO artist_creates_song (artist_id, sid) select artist_id, p_song_id from artist where FIND_IN_SET(artist_id, p_artist_ids);
 END$$
 DELIMITER ;
-select * from playlist;
-select * from playlist_contains_song;
+
+
 -- add songs to playlist
 DELIMITER //
 
@@ -353,8 +347,6 @@ BEGIN
 END //
 
 DELIMITER ;
-select * from user;
-
 drop procedure if exists DeleteSong;
 DELIMITER $$
 CREATE PROCEDURE DeleteSong(
@@ -377,7 +369,7 @@ BEGIN
     
 END$$
 DELIMITER ;
-select * from user;
+
 /* adds in a user (creates a corresponding artist profile as well ) */
 drop procedure if exists AddUser;
 DELIMITER $$

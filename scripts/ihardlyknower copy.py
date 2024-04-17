@@ -112,7 +112,7 @@ def flush_artists() -> None:
 
 
 if playlists:
-    for playlist in tqdm(playlists["items"][:4]):
+    for playlist in tqdm(playlists["items"][:40]):
         playlist_track_ids = []
 
         sleep(waiting_time)
@@ -205,7 +205,7 @@ for i in tqdm(albums_to_get_to, desc="processing albums"):
             if album_info["images"]:
                 p_album_image_link = wrap_quotes(album_info["images"][0]["url"])
             else:
-                p_album_image_link = "www.skill-issue.com"
+                p_album_image_link = wrap_quotes("www.skill-issue.com")
             p_is_explicit = "true"
             p_artist_ids = []
             for a in album_info["artists"]:
