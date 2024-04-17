@@ -1,23 +1,22 @@
 import Form from '@/app/ui/songs/create-form';
 import Breadcrumbs from '@/app/ui/songs/breadcrumbs';
-import { fetchCustomers } from '@/app/lib/data';
+import { fetchAlbumsByUser } from '@/app/lib/data';
  
-export default async function Page() {
-  const customers = await fetchCustomers();
- 
+export default async function Page() { 
+  const albums = await fetchAlbumsByUser();
   return (
     <main>
       <Breadcrumbs
         breadcrumbs={[
           { label: 'Songs', href: '/dashboard/songs' },
           {
-            label: 'Create Invoice',
+            label: 'Publish Song',
             href: '/dashboard/songs/create',
             active: true,
           },
         ]}
       />
-      <Form customers={customers} />
+      <Form />
     </main>
   );
 }

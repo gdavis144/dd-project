@@ -9,6 +9,13 @@ export type User = {
   password: string;
 };
 
+export type Album = {
+  album_id: number;
+  album_name: string;
+  album_image_link: string;
+  is_explicit: boolean;
+};
+
 export type Customer = {
   id: string;
   name: string;
@@ -40,11 +47,11 @@ export type LatestSongRaw = Omit<Song, 'amount'> & {
 export type Artist = {
   artist_id: number;
   stage_name: string;
-    follower_count: number;
-    username?: string;
-    email_address?: string;
-    password?: string;
-    profile_image?: string;
+  follower_count: number;
+  username?: string;
+  email_address?: string;
+  password?: string;
+  profile_image?: string;
 };
 
 export type CustomersTableType = {
@@ -73,8 +80,9 @@ export type CustomerField = {
 };
 
 export type SongForm = {
-  id: string;
-  customer_id: string;
-  amount: number;
-  status: 'pending' | 'paid';
+  sid: number;
+  song_name: string;
+  length: number;
+  cover_image_link?: string;
+  streaming_link: string;
 };

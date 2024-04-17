@@ -8,6 +8,7 @@ import {
   LatestSongRaw,
   User,
   Revenue,
+  Album,
 } from './definitions';
 import { formatCurrency } from './utils';
 import * as mysql from 'mysql2';
@@ -56,6 +57,17 @@ export async function fetchLatestSongs() {
   } catch (error) {
     console.error('Database Error:', error);
     throw new Error('Failed to fetch the latest songs.');
+  }
+}
+
+export async function fetchAlbumsByUser() {
+  noStore();
+  try {
+    const data = (await executeProcedure(`CALL get_user_albums('${process.env.CURRENT_USER}')`)) as Album[];
+    return data[0] as unknown as Album[];
+  } catch (error) {
+    console.error('Database Error:', error);
+    throw new Error('Failed to fetch albums for the user.');
   }
 }
 

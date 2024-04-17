@@ -4,28 +4,29 @@ import Image from 'next/image';
 import { lusitana } from '@/app/ui/fonts';
 import { Song } from '@/app/lib/definitions';
 import { fetchLatestSongs } from '@/app/lib/data';
+import Link from 'next/link';
 
 export default async function LatestSongs() {
   const latestSongs = await fetchLatestSongs();
   return (
-    <div className="flex w-full flex-col md:col-span-4">
+    <div className="flex w-full flex-col md:col-span-12">
       <h2 className={`${lusitana.className} mb-4 text-xl md:text-2xl`}>
         Latest Songs
       </h2>
       <div className="flex grow flex-col justify-between rounded-xl bg-gray-50 p-4">
 
-        <div className="bg-white px-6">
+        <div className="bg-white">
           {latestSongs.map((song : Song) => {
-            // console.log(song.song_name);
             return (
-              <div
+              <Link
                 key={song.sid}
                 className={clsx(
-                  'flex flex-row items-center justify-between py-4',
+                  'flex flex-row items-center justify-between py-4 px-6 hover:bg-yellow-400 hover:text-white',
                   // {
                   //   'border-t': i !== 0,
                   // },
                 )}
+                href={song.streaming_link}
               >
                 <div className="flex items-center">
                   {/* <Image
@@ -40,7 +41,7 @@ export default async function LatestSongs() {
                       {song.song_name}
                     </p>
                     <p className="hidden text-sm text-gray-500 sm:block">
-                      {/* {song.date_added} */}
+                      Uploaded on {song.date_added.toDateString()}
                     </p>
                   </div>
                 </div>
@@ -49,7 +50,7 @@ export default async function LatestSongs() {
                 >
                   {Math.floor(song.length / 60)}:{song.length % 60}
                 </p>
-              </div>
+              </Link>
             );
           })}
         </div>
