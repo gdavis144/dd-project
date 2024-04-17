@@ -5,54 +5,9 @@ import { ArrowRightIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import Image from 'next/image';
 import styles from '@/app/ui/home.module.css';
-// import * as mysql from 'mysql2';
-// import { useEffect, useState } from 'react';
-
-// interface TownJson extends mysql.RowDataPacket { town: String; state: String; }
-
-// async function getTowns(): Promise<Array<TownJson>> {
-//   const connection = mysql.createConnection({
-//     host: 'localhost',
-//     user: 'user',
-//     password: 'password',
-//     database: 'sharkdb',
-//   });
-
-//   connection.connect(function (err) {
-//     if (err) {
-//       return console.error('error: ' + err.message);
-//     }
-
-//     console.log('Connected to the MySQL server.');
-//   });
-
-//   let result = new Array();
-//   const query = 'SELECT town, state from township';
-
-//   await connection.promise().query<TownJson[]>(
-//     query).then(([results, fields]) => {
-//       result = results;
-//       console.log("reset");
-//       return results;
-//     });
-
-//   console.log("returned");
-//   console.log(result);
-//   return result;
-// }
+import { cookies } from 'next/headers'
 
 export default function Page() {
-  // const [townList, setTownList] = useState<TownJson[]>([]);
-  // useEffect(() => {
-  //   async function updateTowns() {
-  //     const towns = await getTowns();
-  //     setTownList(towns);
-  //   }
-  //   if (!townList) {
-  //     updateTowns();
-  //   }
-  // }, []);
-
   return (
     <main className="flex min-h-screen flex-col p-6">
       <div className="flex h-20 shrink-0 items-end rounded-lg bg-blue-500 p-4 md:h-52">
@@ -67,7 +22,6 @@ export default function Page() {
               Next.js Learn Course
             </a>
             , brought to you by Vercel.
-            {/* <ul>{townList}</ul> */}
           </p>
           <Link
             href="/login"

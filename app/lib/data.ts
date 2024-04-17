@@ -9,6 +9,7 @@ import {
   User,
   Revenue,
   Album,
+  Playlist,
 } from './definitions';
 import { formatCurrency } from './utils';
 import * as mysql from 'mysql2';
@@ -71,6 +72,17 @@ export async function fetchAlbumsByUser() {
   }
 }
 
+export async function fetchAlbumSongCount(album_id: number) {
+  noStore();
+  try {
+    const data = (await executeProcedure(`Select get_album_song_count(${album_id}) as song_count;`)) as Album[];
+    return data[0];
+  } catch (error) {
+    console.error('Database Error:', error);
+    throw new Error('Failed to fetch songs for the album.');
+  }
+}
+
 export async function fetchArtistById(artist_id: number) {
   noStore();
   try {
@@ -81,6 +93,19 @@ export async function fetchArtistById(artist_id: number) {
   } catch (error) {
     console.error('Database Error:', error);
     throw new Error('Failed to fetch artist.');
+  }
+}
+
+export async function fetchArtistIdByUsername(username: string) {
+  noStore();
+  try {
+    const data = (await executeProcedure(
+      `SELECT user.artist_id from user where username = '${username}';`,
+    ));
+    return data;
+  } catch (error) {
+    console.error('Database Error:', error);
+    throw new Error('Failed to fetch artist id.');
   }
 }
 
@@ -99,35 +124,13 @@ export async function fetchArtistSongs(artist_id: number) {
 
 export async function fetchUserPlaylists() {
   noStore();
-  // try {
-  //   const songCountPromise = sql`SELECT COUNT(*) FROM invoices`;
-  //   const customerCountPromise = sql`SELECT COUNT(*) FROM customers`;
-  //   const invoiceStatusPromise = sql`SELECT
-  //        SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END) AS "paid",
-  //        SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END) AS "pending"
-  //        FROM invoices`;
-
-  //   const data = await Promise.all([
-  //     songCountPromise,
-  //     customerCountPromise,
-  //     invoiceStatusPromise,
-  //   ]);
-
-  //   const numberOfSongs = Number(data[0].rows[0].count ?? '0');
-  //   const numberOfCustomers = Number(data[1].rows[0].count ?? '0');
-  //   const totalPaidInvoices = formatCurrency(data[2].rows[0].paid ?? '0');
-  //   const totalPendingInvoices = formatCurrency(data[2].rows[0].pending ?? '0');
-
-  //   return {
-  //     numberOfCustomers,
-  //     numberOfSongs,
-  //     totalPaidInvoices,
-  //     totalPendingInvoices,
-  //   };
-  // } catch (error) {
-  //   console.error('Database Error:', error);
-  //   throw new Error('Failed to fetch card data.');
-  // }
+    // try {
+    //   const data = (await executeProcedure(`SELECT playlist.* FROM playlist J ('${process.env.CURRENT_USER}')`)) as Album[];
+    //   return data[0] as unknown as Playlist[];
+    // } catch (error) {
+    //   console.error('Database Error:', error);
+    //   throw new Error('Failed to fetch albums for the user.');
+    // }
 }
 
 const ITEMS_PER_PAGE = 6;
@@ -159,6 +162,94 @@ export async function fetchFilteredSongs(query: string, currentPage: number) {
   }
 }
 
+export async function fetchFilteredPlaylists(query: string, currentPage: number) {
+  noStore();
+  const offset = (currentPage - 1) * ITEMS_PER_PAGE;
+
+  try {
+    const q = `
+      SELECT
+        user.*,
+        playlist.*
+        FROM playlist
+        JOIN user on playlist.creator = user.username
+        WHERE
+          playlist.playlist_name LIKE '${`%${query}%`}' OR
+          user.username LIKE '${`%${query}%`}'
+      ORDER BY playlist.like_count DESC
+      LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}
+    `;
+
+    const data = await executeProcedure(q);
+
+    return data;
+  } catch (error) {
+    console.error('Database Error:', error);
+    throw new Error('Failed to fetch playlists.');
+  }
+}
+
+export async function fetchPlaylistSongs(playlist_id: number) {
+  try {
+    const songs = await executeProcedure(`SELECT song.* FROM song
+    JOIN playlist_contains_song ON song.sid = playlist_contains_song.sid WHERE playlist_contains_song.playlist_id=${playlist_id};`);
+    return songs[0];
+  } catch (error) {
+    console.error('Failed to fetch user:', error);
+    throw new Error('Failed to fetch user.');
+  }
+}
+
+export async function fetchPlaylistById(playlist_id: number) {
+  try {
+    const playlist = await executeProcedure(`SELECT * FROM playlist WHERE playlist_id=${playlist_id};`);
+    return playlist[0];
+  } catch (error) {
+    console.error('Failed to fetch user:', error);
+    throw new Error('Failed to fetch user.');
+  }
+}
+
+export async function fetchFilteredPlaylistSongs(playlist_id: number, currentPage: number) {
+  noStore();
+  const offset = (currentPage - 1) * ITEMS_PER_PAGE;
+
+  try {
+    const q = `
+      SELECT
+        song.*,
+        artist.*
+        FROM artist_creates_song
+        JOIN song ON artist_creates_song.sid = song.sid
+        JOIN artist on artist_creates_song.artist_id = artist.artist_id
+        JOIN playlist_contains_song ON song.sid = playlist_contains_song.sid
+        WHERE
+        playlist_contains_song.playlist_id = ${playlist_id}
+      ORDER BY song.date_added DESC
+      LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}
+    `;
+
+    const data = await executeProcedure(q);
+
+    return data;
+  } catch (error) {
+    console.error('Database Error:', error);
+    throw new Error('Failed to fetch songs.');
+  }
+}
+
+export async function fetchSongsPagesPlaylist(playlist_id: number) {
+  noStore();
+  try {
+    const data = fetchFilteredPlaylistSongs.length;
+    const totalPages = Math.ceil(Number(data) / ITEMS_PER_PAGE);
+    return totalPages;
+  } catch (error) {
+    console.error('Database Error:', error);
+    throw new Error('Failed to fetch total number of song pages.');
+  }
+}
+
 export async function fetchSongsPages(query: string) {
   noStore();
   try {
@@ -168,6 +259,18 @@ export async function fetchSongsPages(query: string) {
   } catch (error) {
     console.error('Database Error:', error);
     throw new Error('Failed to fetch total number of song pages.');
+  }
+}
+
+export async function fetchPlaylistPages(query: string) {
+  noStore();
+  try {
+    const data = fetchFilteredPlaylists.length;
+    const totalPages = Math.ceil(Number(data) / ITEMS_PER_PAGE);
+    return totalPages;
+  } catch (error) {
+    console.error('Database Error:', error);
+    throw new Error('Failed to fetch total number of playlist pages.');
   }
 }
 

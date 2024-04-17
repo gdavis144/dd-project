@@ -16,6 +16,15 @@ export type Album = {
   is_explicit: boolean;
 };
 
+export type Playlist = {
+  playlist_id: number;
+  playlist_name: string;
+  creator: string;
+  cover_image_url: string;
+  like_count: number;
+  is_public: boolean;
+};
+
 export type Customer = {
   id: string;
   name: string;

@@ -1,6 +1,6 @@
 import { PencilIcon, PlayIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
-import { deleteSong as deleteSong, followArtist } from '@/app/lib/actions';
+import { deleteSong, followArtist } from '@/app/lib/actions';
 
 export function CreateSong() {
   return (
@@ -25,7 +25,7 @@ export function PlaySong({ link }: { link: string }) {
   );
 }
 
-export function DeleteSong({ id }: { id: string }) {
+export function DeleteSong({ id }: { id: number }) {
   const deleteSongWithId = deleteSong.bind(null, id);
   return (
     <form action={deleteSongWithId}>

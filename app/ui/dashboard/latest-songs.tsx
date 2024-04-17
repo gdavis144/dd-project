@@ -13,7 +13,7 @@ export default async function LatestSongs() {
       <h2 className={`${lusitana.className} mb-4 text-xl md:text-2xl`}>
         Latest Songs
       </h2>
-      <div className="flex grow flex-col justify-between rounded-xl bg-gray-50 p-4">
+      <div className="flex grow flex-col justify-between rounded-xl bg-yellow-500 p-4">
 
         <div className="bg-white">
           {latestSongs.map((song : Song) => {
@@ -21,7 +21,7 @@ export default async function LatestSongs() {
               <Link
                 key={song.sid}
                 className={clsx(
-                  'flex flex-row items-center justify-between py-4 px-6 hover:bg-yellow-400 hover:text-white',
+                  'flex flex-row items-center justify-between py-4 px-6 hover:bg-yellow-500 hover:text-white',
                   // {
                   //   'border-t': i !== 0,
                   // },
@@ -48,7 +48,7 @@ export default async function LatestSongs() {
                 <p
                   className={`${lusitana.className} truncate text-sm font-medium md:text-base`}
                 >
-                  {Math.floor(song.length / 60)}:{song.length % 60}
+                  Time |  {TimeFromLength(song.length)}
                 </p>
               </Link>
             );
@@ -61,4 +61,15 @@ export default async function LatestSongs() {
       </div>
     </div>
   );
+}
+
+export function TimeFromLength(length: number) {
+  const min = Math.floor(length / 60);
+  let sec = (length % 60).toString();
+
+  while (sec.length < 2) {
+    sec += '0';
+  }
+
+  return min.toString() + ":" + sec;
 }

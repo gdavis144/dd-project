@@ -2,18 +2,17 @@ import Image from 'next/image';
 import { DeleteSong, PlaySong } from '@/app/ui/songs/buttons';
 import InvoiceStatus from '@/app/ui/songs/status';
 import { formatDateToLocal, formatCurrency } from '@/app/lib/utils';
-import { fetchFilteredSongs } from '@/app/lib/data';
+import { fetchFilteredPlaylistSongs, fetchPlaylistSongs } from '@/app/lib/data';
 import { TimeFromLength } from '../dashboard/latest-songs';
-import Link from 'next/link';
 
 export default async function SongsTable({
-  query,
+  playlist_id,
   currentPage,
 }: {
-  query: string;
+    playlist_id: number;
   currentPage: number;
 }) {
-  const songs = await fetchFilteredSongs(query, currentPage);
+  const songs = await fetchFilteredPlaylistSongs(playlist_id, currentPage);
 
   return (
     <div className="mt-6 flow-root">
@@ -63,7 +62,7 @@ export default async function SongsTable({
                   Song
                 </th>
                 <th scope="col" className="px-3 py-5 font-medium">
-                  Artist
+                  Artists
                 </th>
                 <th scope="col" className="px-3 py-5 font-medium">
                   Album
@@ -98,9 +97,7 @@ export default async function SongsTable({
                     </div>
                   </td>
                   <td className="whitespace-nowrap px-3 py-3">
-                  <Link className="hover:bg-blue-100" key={song.sid} href={`/dashboard/users/${song.artist_id}`}>
                     {song.stage_name}
-                    </Link>
                   </td>
                   <td className="whitespace-nowrap px-3 py-3">
                     {/* {formatCurrency(invoice.amount)} */}
