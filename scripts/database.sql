@@ -1,5 +1,5 @@
-drop database if exists projdb;
-create database projdb;
+#drop database if exists projdb;
+create database if not exists projdb;
 use projdb;
 drop table if exists artist_creates_song;
 drop table if exists producer_produces_song;
