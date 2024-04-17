@@ -766,6 +766,62 @@ END$$
 
 DELIMITER ;
 
+drop procedure if exists fetch_filtered_songs;
+DELIMITER $$
+CREATE PROCEDURE fetch_filtered_songs(
+	IN p_query TEXT,
+    IN p_items int,
+    IN p_offset int
+)
+BEGIN 
+    SELECT
+        song.*,
+        artist.*,
+        album.*
+        FROM artist_creates_song
+        JOIN song ON artist_creates_song.sid = song.sid
+        JOIN artist on artist_creates_song.artist_id = artist.artist_id
+        JOIN album on album.album_id = song.album_id
+        WHERE
+          artist.stage_name LIKE p_query OR
+          song.song_name LIKE p_query
+      ORDER BY song.date_added DESC
+      LIMIT p_items OFFSET p_offset;
+END$$
+DELIMITER ;
+
+drop procedure if exists is_user_following;
+DELIMITER $$
+CREATE PROCEDURE is_user_following(
+	IN p_username TEXT,
+    IN p_artist_id int
+)
+BEGIN 
+	IF (SELECT COUNT(*) FROM user_follows_artist where username = p_username and artist_id = p_artist_id)
+    THEN SELECT true;
+    ELSE SELECT false;
+    END IF;
+END$$
+DELIMITER ;
+
+-- functions
+
+SELECT
+song.*,
+artist.*,
+album.*
+FROM artist_creates_song
+JOIN song ON artist_creates_song.sid = song.sid
+JOIN artist on artist_creates_song.artist_id = artist.artist_id
+JOIN album on album.album_id = song.album_id
+WHERE
+  artist.stage_name LIKE '%h%' OR
+  song.song_name LIKE '%h%'
+ORDER BY song.date_added DESC
+LIMIT 6 OFFSET 0;
+
+call fetch_filtered_songs('%h%', 6, 0);
+
 /* Insert data into the genre table */
 INSERT INTO genre (genre_name) VALUES
 ('Rock'),
@@ -855,3 +911,8 @@ INSERT INTO producer_produces_song (producer_email, song_id) VALUES
 ('producer1@email.com', 1),
 ('producer2@email.com', 2),
 ('producer3@email.com', 3);
+
+select count(*) from song;
+select count(*) from artist;
+select count(*) from album;
+select count(*) from playlist;
