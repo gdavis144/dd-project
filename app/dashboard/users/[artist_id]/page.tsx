@@ -1,13 +1,14 @@
 import React, { Suspense } from 'react';
-import { fetchArtistById, fetchArtistSongs } from '@/app/lib/data';
+import { fetchArtistById, fetchArtistSongs, fetchIsFollowing } from '@/app/lib/data';
 import { Artist, Song } from '@/app/lib/definitions';
 import { notFound } from 'next/navigation';
-import Table from '@/app/ui/songs/short-table';
+import Table from '@/app/ui/songs/table';
 import Pagination from '@/app/ui/songs/pagination';
 import { SongsTableSkeleton } from '@/app/ui/skeletons';
 import { fetchSongsPages } from '@/app/lib/data';
 import { lusitana } from '@/app/ui/fonts';
 import { Button } from '@/app/ui/button';
+import { FollowArtist, UnfollowArtist } from '@/app/ui/songs/buttons';
 
 export default async function Page({
   params,
@@ -18,10 +19,7 @@ export default async function Page({
   if (Number.isNaN(artist_id)) {
     notFound();
   }
-  const [artist, songs] = (await Promise.all([
-    fetchArtistById(artist_id),
-    fetchArtistSongs(artist_id),
-  ])) as [unknown, unknown] as [Artist[], Song[]];
+  const artist = await fetchArtistById(artist_id) as unknown as Artist[];
 
   if (artist.length == 0) {
     notFound();
@@ -30,6 +28,9 @@ export default async function Page({
   const query = artist[0].stage_name;
   const currentPage = Number(params?.page) || 1;
   const totalPages = await fetchSongsPages(query);
+  const user = process.env.CURRENT_USER ? process.env.CURRENT_USER : '';
+  const is_following = await fetchIsFollowing(user, artist_id);
+
   return (
     <div>
       <div className="rounded-xl bg-green-800 py-10 text-white">
@@ -44,6 +45,11 @@ export default async function Page({
           <h2 className={`${lusitana.className} text-l mb-4 md:text-xl`}>
             {artist[0].follower_count} Followers
           </h2>
+          <div className='mb-4 ml-3'>
+          {is_following ? 
+          <UnfollowArtist follower_id={user} artist_id={artist_id}></UnfollowArtist>
+          : <FollowArtist follower_id={user} artist_id={artist_id}></FollowArtist>}
+          </div>
         </div>
       </div>
       <h1 className={`${lusitana.className} text-xl mt-10 ml-5`}>Songs</h1>

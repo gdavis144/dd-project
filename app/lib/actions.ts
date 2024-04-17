@@ -101,11 +101,21 @@ export async function deleteSong(id: number) {
 
 export async function followArtist(follower_id: string, artist_id: number) {
   try {
-    await sql`call`;
+    await executeProcedure(`call follow_artist(${artist_id}, '${follower_id}');`);
     revalidatePath(`/dashboard/users/${artist_id}`);
     return { message: 'Followed artist.' };
   } catch (error) {
     return { message: 'Database Error: Failed to follow artist.' };
+  }
+}
+
+export async function unfollowArtist(follower_id: string, artist_id: number) {
+  try {
+    await executeProcedure(`call unfollow_artist(${artist_id}, '${follower_id}');`);
+    revalidatePath(`/dashboard/users/${artist_id}`);
+    return { message: 'Unfollowed artist.' };
+  } catch (error) {
+    return { message: 'Database Error: Failed to unfollow artist.' };
   }
 }
 
