@@ -1,3 +1,6 @@
+drop database if exists projdb;
+create database projdb;
+use projdb;
 drop table if exists artist_creates_song;
 drop table if exists producer_produces_song;
 drop table if exists song_is_genre;
@@ -11,8 +14,12 @@ drop table if exists genre;
 drop table if exists playlist;
 drop table if exists friend_requests;
 DROP TABLE IF EXISTS user;
-DROP TABLE IF EXISTS artist;
+DROP TABLE IF EXISTS user_follows_artist;
+DROP TABLE IF EXISTS artist_creates_album;
 DROP TABLE IF EXISTS producer;
+DROP TABLE IF EXISTS artist;
+
+
 /*
 Tables in this schema:
 
@@ -32,7 +39,7 @@ Tables in this schema:
     producer_produces_song(producer_email: varchar(255), song_id: int) -- maps producers to the songs they produced
     friend_requests(requester: varchar(255), requestee: varchar(255), status: enum('pending', 'accepted')) -- stores friend requests between users
 */
-
+# select count(*) from artist;
 -- Procedures:
 /*
     get_songs() -- returns all songs in the database ordered by date_added descending
@@ -79,7 +86,7 @@ CREATE TABLE user (
 
 create table playlist(
     playlist_id INT PRIMARY KEY AUTO_INCREMENT,
-    playlist_name VARCHAR(24) not null,
+    playlist_name VARCHAR(96) not null,
     cover_image_url VARCHAR(600),
     like_count INT not null DEFAULT 0,
     is_public boolean default true,
@@ -200,6 +207,9 @@ CREATE TABLE friend_requests (
 );
 
 /* PROCEDURES */
+
+
+
 --
 DROP PROCEDURE IF EXISTS get_songs;
 DELIMITER //
@@ -254,6 +264,61 @@ BEGIN
 END$$
 DELIMITER ;
 
+-- a procedure to add a single song and mention however many artists worked on it.
+drop procedure if exists add_song_n_artists;
+DELIMITER $$
+CREATE PROCEDURE add_song_n_artists(
+	p_artist_ids TEXT,
+    p_song_id INT,
+    p_song_name VARCHAR(200),
+    p_length INT,
+    p_date_added DATE,
+    p_cover_image_link VARCHAR(600),
+    p_streaming_link VARCHAR(600)
+)
+BEGIN
+	INSERT INTO song (
+		sid,
+		song_name,
+		length,
+		date_added,
+		cover_image_link,
+		streaming_link)
+	VALUES (
+		p_song_id,
+		p_song_name,
+		p_length,
+		p_date_added,
+		p_cover_image_link,
+		p_streaming_link
+	);
+	INSERT INTO artist_creates_song (artist_id, sid) select artist_id, p_song_id from artist where FIND_IN_SET(artist_id, p_artist_ids);
+END$$
+DELIMITER ;
+select * from playlist;
+select * from playlist_contains_song;
+-- add songs to playlist
+DELIMITER //
+
+CREATE PROCEDURE create_playlist_from_songs(
+	IN p_id INT,
+    IN p_playlist_name VARCHAR(96),
+    IN p_cover_image_url VARCHAR(600),
+    IN p_like_count INT,
+    IN p_is_public BOOLEAN,
+    IN p_creator VARCHAR(255),
+    IN p_song_ids TEXT
+)
+BEGIN
+    INSERT INTO playlist (playlist_id, playlist_name, cover_image_url, like_count, is_public, creator)
+    VALUES (p_id, p_playlist_name, p_cover_image_url, p_like_count, p_is_public, p_creator);
+    -- create table playlist_contains_song (primary key(playlist_id, sid),
+    INSERT INTO playlist_contains_song (playlist_id, sid) select p_id, sid from song where FIND_IN_SET(sid, p_song_ids);
+END //
+
+DELIMITER ;
+select * from user;
+
 drop procedure if exists DeleteSong;
 DELIMITER $$
 CREATE PROCEDURE DeleteSong(
@@ -276,7 +341,7 @@ BEGIN
     
 END$$
 DELIMITER ;
-
+select * from user;
 /* adds in a user (creates a corresponding artist profile as well ) */
 drop procedure if exists AddUser;
 DELIMITER $$
@@ -289,11 +354,11 @@ CREATE PROCEDURE AddUser(
 )
 BEGIN
     /* Check if username or email already exists */
-    IF (SELECT COUNT(*) FROM users WHERE username = p_username OR email_address = p_email) > 0 THEN
+    IF (SELECT COUNT(*) FROM user WHERE username = p_username OR email_address = p_email) > 0 THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Username or Email already exists';
     ELSE
 		INSERT INTO artist (stage_name) values (p_stage_name);
-        INSERT INTO users (username, email_address, password, artist_id, profile_image)
+        INSERT INTO user (username, email_address, password, artist_id, profile_image)
         VALUES (p_username, p_email, p_password, last_insert_id(), p_profile_image);
     END IF;
 END$$
@@ -308,12 +373,12 @@ CREATE PROCEDURE DeleteUser(
 BEGIN
 	declare u_a_id INT;
     /* Check if users exists */
-    IF (SELECT COUNT(*) FROM users WHERE username = p_username) = 0 THEN
+    IF (SELECT COUNT(*) FROM user WHERE username = p_username) = 0 THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'users does not exist';
     ELSE
-		select users.artist_id into u_a_id from users where users.username = p_username;
+		select user.artist_id into u_a_id from user where user.username = p_username;
         DELETE FROM artist where artist.artist_id = u_a_id;
-        DELETE FROM users WHERE username = p_username;
+        DELETE FROM user WHERE username = p_username;
     END IF;
 END$$
 DELIMITER ;
@@ -382,8 +447,26 @@ END
 $$
 DELIMITER ;
 
+-- procedure to add album and pass certain information 
 
-
+drop procedure if exists AddAlbumAndDets;
+DELIMITER $$
+CREATE PROCEDURE AddAlbumAndDets(
+	IN p_album_id INT,
+    IN p_album_name VARCHAR(200),
+    IN p_album_image_link VARCHAR(600),
+    IN p_is_explicit boolean,
+    IN p_artist_ids TEXT,
+    IN p_song_ids TEXT
+)
+BEGIN
+	-- Insert the new album
+	INSERT INTO album (album_id, album_name, album_image_link, is_explicit)
+	VALUES (p_album_id, p_album_name, p_album_image_link, p_is_explicit);	
+	INSERT INTO artist_creates_album (artist_id, album_id) select artist_id, p_album_id from artist where FIND_IN_SET(artist_id, p_artist_ids);
+	UPDATE song SET album_id = p_album_id WHERE FIND_IN_SET(sid, p_song_ids) > 0;
+END $$
+DELIMITER ;
 
 -- Procedure for Sending a Friend Request
 drop procedure if exists SendFriendRequest;
