@@ -65,7 +65,7 @@ create table album (
 );
 
 create table genre (
-    genre_name VARCHAR(24) PRIMARY KEY
+    genre_name VARCHAR(96) PRIMARY KEY
 );
 
 /* need to make subclass */
@@ -140,10 +140,9 @@ create table playlist_contains_song (
 		references playlist(playlist_id)
            on update cascade on delete cascade
 );
-
 create table song_is_genre (
 	primary key(genre_name, sid),
-    genre_name varchar(24) not null,
+    genre_name varchar(48) not null,
     sid int not null,
     foreign key (sid) 
 		references song(sid)
@@ -218,6 +217,43 @@ BEGIN
     SELECT * from song ORDER BY date_added DESC;
 END //
 DELIMITER ;
+drop procedure if exists mark_songs_genre;
+delimiter //
+create procedure mark_songs_genre(
+	p_song_ids TEXT,
+    p_genre varchar(96)
+)
+BEGIN
+	IF (select COUNT(genre_name) from genre where genre.genre_name = p_genre) = 0
+    THEN
+		insert into genre values (genre_name);
+	END IF;
+    insert into song_is_genre (genre_name, sid) select p_genre, sid from song where find_in_set(sid, p_song_ids) and not exists (select * from song_is_genre where song_is_genre.genre_name = p_genre and song_is_genre.sid = song.sid);
+END //
+DELIMITER ;
+
+drop procedure if exists mark_songs_genre_by_artist;
+delimiter //
+create procedure mark_songs_genre_by_artist(
+	p_artist_id INT,
+    p_genre varchar(96)
+)
+BEGIN
+	IF (select COUNT(genre_name) from genre where genre.genre_name = p_genre) = 0
+    THEN
+		insert into genre values (p_genre);
+	END IF;
+    insert into song_is_genre (genre_name, sid) select p_genre, sid from song 
+    where exists (select * from artist_creates_song where artist_creates_song.artist_id = p_artist_id and artist_creates_song.sid = song.sid) 
+    and not exists (select * from song_is_genre where genre_name = p_genre and song_is_genre.sid = song.sid);
+END //
+DELIMITER ;
+
+select * from genre;
+select * from song_is_genre;
+select * from song;
+# call mark_songs_genre_by_artist(112, 'canadian contemporary r&b');
+# call mark_songs_genre_by_artist(1, 'wtf');
 
 drop procedure if exists add_song;
 DELIMITER $$
@@ -467,7 +503,6 @@ BEGIN
 	UPDATE song SET album_id = p_album_id WHERE FIND_IN_SET(sid, p_song_ids) > 0;
 END $$
 DELIMITER ;
-
 -- Procedure for Sending a Friend Request
 drop procedure if exists SendFriendRequest;
 DELIMITER $$

@@ -85,6 +85,8 @@ playlist_incr = 10000
 
 albums_songs = {}
 
+authors_genres = {}
+
 
 def flush_artists() -> None:
     global artist_incr
@@ -94,6 +96,10 @@ def flush_artists() -> None:
     for artist in artists:
         if not artist:
             continue
+        for g in artist["genres"]:
+            ags = authors_genres.get(g, [])
+            ags.append(str(artist_incr))
+            authors_genres[g] = ags
         if artist["followers"]:
             query = f"insert into artist values ({artist_incr}, '{remove_quotes(artist['name'])}', {artist['followers']['total']});"
         else:
@@ -106,7 +112,7 @@ def flush_artists() -> None:
 
 
 if playlists:
-    for playlist in tqdm(playlists["items"][:2]):
+    for playlist in tqdm(playlists["items"][:4]):
         playlist_track_ids = []
 
         sleep(waiting_time)
@@ -180,36 +186,45 @@ if playlists:
         playlist_incr += 1
         # break
 album_incr = 10
-for album_key in tqdm(albums_songs.keys(), desc="working on albums rn..."):
-    sleep(1)
-    album_info = sp.album(album_key)
+albums_to_get_to = list(albums_songs.keys())
+album_queue = []
 
-    p_album_id = album_incr
-    p_album_name = wrap_quotes(remove_quotes(album_info["name"]))
-    p_album_image_link = wrap_quotes(album_info["images"][0]["url"])
-    p_is_explicit = "true"
-    p_artist_ids = []
-    for a in album_info["artists"]:
-        if a["id"] in artist_sid_to_usid:
-            p_artist_ids.append(artist_sid_to_usid[a["id"]])
-    p_artist_ids = wrap_quotes(",".join(p_artist_ids))
 
-    p_song_ids = []
-    for t in album_info["tracks"]["items"]:
-        if t["id"] in track_sid_to_usid:
-            p_song_ids.append(track_sid_to_usid[t["id"]])
-    p_song_ids = wrap_quotes(",".join(p_song_ids))
-    query = f"call AddAlbumAndDets({p_album_id}, {p_album_name}, {p_album_image_link}, {p_is_explicit}, {p_artist_ids}, {p_song_ids});"
-    # print(query)
-    c1.execute(query)
-    album_incr += 1
+for i in tqdm(albums_to_get_to, desc="processing albums"):
+    album_queue.append(i)
+    # print(i)
+    if len(album_queue) >= 18 or i == albums_to_get_to[-1]:
+        sleep(1)
+        # print(album_queue)
+        album_info_fetch = sp.albums(album_queue)
+        # print("executing batch")
+        # pprint.pprint(len(album_info_fetch["albums"]))
+        for album_info in album_info_fetch["albums"]:
+            p_album_id = album_incr
+            p_album_name = wrap_quotes(remove_quotes(album_info["name"]))
+            if album_info["images"]:
+                p_album_image_link = wrap_quotes(album_info["images"][0]["url"])
+            else:
+                p_album_image_link = "www.skill-issue.com"
+            p_is_explicit = "true"
+            p_artist_ids = []
+            for a in album_info["artists"]:
+                if a["id"] in artist_sid_to_usid:
+                    p_artist_ids.append(artist_sid_to_usid[a["id"]])
+            p_artist_ids = wrap_quotes(",".join(p_artist_ids))
 
-    """ 
-    CREATE PROCEDURE AddAlbumAndDets(
-	IN p_album_id INT,
-    IN p_album_name VARCHAR(200),
-    IN p_album_image_link VARCHAR(600),
-    IN p_is_explicit boolean,
-    IN p_artist_ids TEXT,
-    IN p_song_ids TEXT
-    """
+            p_song_ids = []
+            for t in album_info["tracks"]["items"]:
+                if t["id"] in track_sid_to_usid:
+                    p_song_ids.append(track_sid_to_usid[t["id"]])
+            p_song_ids = wrap_quotes(",".join(p_song_ids))
+
+            query = f"call AddAlbumAndDets({p_album_id}, {p_album_name}, {p_album_image_link}, {p_is_explicit}, {p_artist_ids}, {p_song_ids});"
+            # print(query)
+            c1.execute(query)
+            album_incr += 1
+        album_queue.clear()
+for i in tqdm(authors_genres.keys()):
+    for g in authors_genres[i]:
+        mini_q = f"call mark_songs_genre_by_artist({str(g)}, {wrap_quotes(remove_quotes(i))});"
+        c1.execute(mini_q)
