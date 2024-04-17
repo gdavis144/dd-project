@@ -104,7 +104,7 @@ export default async function SongsTable({
                   </td>
                   <td className="whitespace-nowrap px-3 py-3">
                     {/* {formatCurrency(invoice.amount)} */}
-                    Album
+                    {song.album_name}
                   </td>
                   <td className="whitespace-nowrap px-3 py-3">
                     {formatDateToLocal(song.date_added)}

@@ -29,16 +29,6 @@ export default async function CardWrapper({
 }: {
   type: 'albums' | 'playlists';
 }) {
-  // const {
-  //   // numberOfSongs,
-  //  title
-  // creator
-  // } = await fetchUserPlaylists();
-
-  let title,
-    creator: string = '';
-  let songCount,
-    id: number = 0;
 
   let recent: CardData[] = [];
 
@@ -95,9 +85,9 @@ export function Card({
   return (
     <Link
       className={clsx(
-        'rounded-xl bg-blue-300 p-2 shadow-sm hover:bg-blue-100',
+        'rounded-xl bg-blue-300 hover:bg-blue-100 p-2 shadow-sm',
         {
-          'bg-pink-300 hover:bg-pink-100': type == 'albums',
+          'bg-pink-300 hover:bg-pink-200': type == 'albums',
         },
       )}
       href={`${type}/${id}`}
