@@ -1,14 +1,17 @@
 import pprint
 from time import sleep
+from typing import List
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 import pymysql
+from tqdm import tqdm
 
+waiting_time = 1
 
 # lets connect to server first
-username = input("Enter username: ")
-pword = input("Enter password: ")
-name = input("Enter database name: ")
+username = "root"  # input("Enter username: ")
+pword = "74274"  # input("Enter password: ")
+name = "projdb"  # input("Enter database name: ")
 try:
     connection = pymysql.connect(
         host="localhost",
@@ -38,7 +41,7 @@ auth_manager = SpotifyClientCredentials(
     client_id=SPOTIPY_CLIENT_ID, client_secret=SPOTIPY_CLIENT_SECRET
 )
 sp = spotipy.Spotify(auth_manager=auth_manager)
-sleep(1)
+sleep(waiting_time)
 playlists = sp.user_playlists("spotify")
 first = True
 visited_songs = set()
@@ -46,110 +49,167 @@ visited_artists = set()
 visited_albums = set()
 
 first_q = "call AddUser('ADMIN_000001', 'ADMIN-EMAIL@GMAIL.COM', 'password', 'https://pbs.twimg.com/media/GLOrE46WIAAtt8E?format=jpg&name=large', 'ADMINS');"
+c1.execute(first_q)
+
 # take note of:
 # add_song(p_artist_id, p_song_name, ...) -- adds a new song to the database and maps it to the specified artist
 # AddAlbum(p_album_name, p_album_image_link, p_is_explicit, p_stage_name, song_ids) -- adds a new album and optionally links it to an artist and existing songs
 # AddingSongToPlaylist(p_sid, p_playlist_id) -- adds a song to the specified playlist if it doesn't already exist in that playlist
-artist_to_dbid = {}
+
+
+# playlist_contains_song(playlist_id: int, sid: int) -- maps songs to the playlists they are included in
+# user_follows_artist(username: varchar(255), artist_id: int) -- tracks which users follow which artists
+
+# artist_creates_song(artist_id: int, sid: int) -- maps artists to the songs they created
+# artist_creates_album(album_id: int, artist_id: int) -- maps albums to the artists who created them
+# song_is_genre(genre_name: varchar(24), sid: int) -- maps songs to their genres
+# producer_produces_song(producer_email: varchar(255), song_id: int) -- maps producers to the songs they produced
+
+
+def remove_quotes(s: str) -> str:
+    return s.replace("'", "").replace('"', "")
+
+
+def wrap_quotes(s: str) -> str:
+    return f"'{s}'"
+
+
+artist_sid_to_usid = {}
+artist_list = []
 artist_incr = 100
-while playlists:
-    artist_list = []
 
-    def flush_artist_list():
-        artists = sp.artists(artist_list)
-        artist_list.clear()
-        for artist in artists["artists"]:
-            a_name = artist["name"].replace('"', "").replace("'", "")
-            a_followers = artist["followers"]["total"]
-            artist_q = f"insert into artist values ('{a_name}', {a_followers});"
-            try:
-                c1.execute(artist_q)
-                response = c1.fetchall()
-            except pymysql.Error as e:
-                print(artist_q)
-                # raise e
+track_sid_to_usid = {}
+track_incr = 1000
 
-    for i, playlist in enumerate(playlists["items"]):
-        print("%4d %s" % (1 + i + playlists["offset"], playlist["name"]))
-        # first we actually add the playlist
-        """ 
-        """
-        sleep(1)
-        playlistdata = sp.playlist(playlist["id"])
-        p_name = playlistdata["name"].replace('"', "").replace("'", "")
-        p_image = playlistdata["images"][0]["url"]
-        p_followers = playlistdata["followers"]["total"]
-        playlist_q = f"insert into playlist (playlist_name, cover_image_url, like_count, is_public, creator) values ('{p_name}', '{p_image}', {p_followers}, true, 'ADMIN_000001')"
-        try:
-            c1.execute(playlist_q)
-            response = c1.fetchall()
-        except pymysql.Error as e:
-            print(playlist_q)
-            raise e
+playlist_incr = 10000
+
+albums_songs = {}
+
+
+def flush_artists() -> None:
+    global artist_incr
+    global artist_list
+    sleep(waiting_time)
+    artists = sp.artists(artist_list)["artists"]
+    for artist in artists:
+        if not artist:
             continue
+        if artist["followers"]:
+            query = f"insert into artist values ({artist_incr}, '{remove_quotes(artist['name'])}', {artist['followers']['total']});"
+        else:
+            query = f"insert into artist values ({artist_incr}, '{remove_quotes(artist['name'])}', 0);"
 
-        sleep(1)
-        songs = sp.playlist_tracks(playlist["id"])
-        query = "insert into song (song_name, length, date_added, cover_image_link, streaming_link) VALUES"
+        c1.execute(query)
+        artist_sid_to_usid[artist["id"]] = str(artist_incr)
+        artist_incr += 1
+    artist_list.clear()
 
-        while songs:
 
-            for song in songs["items"]:
-                s = song["track"]
-                # pprint.pprint(s)
-                if s:
+if playlists:
+    for playlist in tqdm(playlists["items"][:2]):
+        playlist_track_ids = []
 
-                    # album too why not
-                    album_id = s["album"]["id"]
-                    if album_id not in visited_albums:
-                        visited_albums.add(album_id)
-                        album = s["album"]
-                        if album["images"]:
-                            a_name = album["name"].replace('"', "").replace("'", "")
-                            a_image = ["images"][0]
-                            album_q = f"insert into album (album_name, album_image_link) values ('{a_name}', '{a_image}');"
-                            try:
-                                c1.execute(album_q)
-                                response = c1.fetchall()
-                            except pymysql.Error as e:
-                                print(album_q)
-                                # raise e
+        sleep(waiting_time)
+        tracks = sp.playlist_tracks(playlist_id=playlist["id"])["items"]
 
-                    if s["id"] not in visited_songs:
-                        if s["album"]["images"]:
-                            if s["external_urls"]["spotify"]:
-                                s_name = s["name"].replace('"', "").replace("'", "")
-                                s_time = s["duration_ms"] // 1000
-                                s_image = s["album"]["images"][0]["url"]
-                                s_url = s["external_urls"]["spotify"]
-                                query += f"\n ('{s_name}', {s_time}, '2024-04-13', '{s_image}', '{s_url}'),"
-                        visited_songs.add(s["id"])
-                # we will check if there are enough artists to justify grabbing them
-                if len(artist_list) > 10:
-                    flush_artist_list()
+        for track in tracks:
+            # first mark artists to add
+            if track["track"]:
+                if track["track"]["artists"]:
+                    for artist in track["track"]["artists"]:
+                        if (
+                            artist["id"] not in artist_sid_to_usid
+                            and artist["id"] not in artist_list
+                        ):
+                            artist_list.append(artist["id"])
+                            if len(artist_list) > 49:
+                                flush_artists()
 
-            if songs["next"]:
-                sleep(1)
-                songs = sp.next(songs)
-            else:
-                songs = None
-        query = query[:-1] + ";"
-        try:
-            c1.execute(query)
-            response = c1.fetchall()
-        except pymysql.Error as e:
-            print(query)
+        # a batch of artists to add to db
+        if artist_list:
+            flush_artists()
+
+        # go through again to add songs
+        for track in tracks:
+            # collect info to add each song
+            if track["track"]:
+                artist_list = []
+                if track["track"]["id"] in track_sid_to_usid:
+                    playlist_track_ids.append(
+                        str(track_sid_to_usid[track["track"]["id"]])
+                    )
+                    continue
+                if track["track"]["artists"]:
+                    for artist in track["track"]["artists"]:
+                        artist_list.append(str(artist_sid_to_usid[artist["id"]]))
+                # mark this song was part of an album
+                s_album = albums_songs.get(track["track"]["album"]["id"], [])
+                s_album.append(track_incr)
+                albums_songs[track["track"]["album"]["id"]] = s_album
+                # continue
+                if (
+                    track["track"]["album"]["images"]
+                    and track["track"]["external_urls"]["spotify"]
+                ):
+                    s_name = track["track"]["name"].replace('"', "").replace("'", "")
+                    s_time = track["track"]["duration_ms"] // 1000
+                    s_date = "2024-04-14"
+                    s_image = track["track"]["album"]["images"][0]["url"]
+                    s_url = track["track"]["external_urls"]["spotify"]
+                    query = f"call add_song_n_artists('{','.join(artist_list)}', {track_incr}, '{remove_quotes(s_name)}', {s_time}, '{s_date}', '{s_image}', '{s_url}');"
+                    # print(query)
+                    c1.execute(query)
+                    playlist_track_ids.append(str(track_incr))
+                    track_sid_to_usid[track["track"]["id"]] = str(track_incr)
+                    track_incr += 1
+        # collect playlist info
+        p_playlist_name = wrap_quotes(remove_quotes(playlist["name"]))
+        if playlist["images"][0]["url"]:
+            p_cover_image_url = wrap_quotes(playlist["images"][0]["url"])
+        else:
+            p_cover_image_url = "'www.brokenlink.com'"
+        sleep(waiting_time)
+        p_like_count = sp.playlist(playlist["id"], "followers")["followers"]["total"]
+        p_is_public = "true"
+        p_creator = "'ADMIN_000001'"
+        p_song_ids = wrap_quotes(",".join(playlist_track_ids))
+        playlist_track_ids = []
+        query = f"call create_playlist_from_songs({playlist_incr}, {p_playlist_name}, {p_cover_image_url}, {p_like_count}, {p_is_public}, {p_creator}, {p_song_ids});"
+        # print(query)
+        c1.execute(query)
+        playlist_incr += 1
+        # break
+album_incr = 10
+for album_key in tqdm(albums_songs.keys(), desc="working on albums rn..."):
     sleep(1)
-    flush_artist_list()
+    album_info = sp.album(album_key)
 
-    break  # we don't need more than 50 playlists
-    if playlists["next"]:
-        playlists = sp.next(playlists)
-    else:
-        playlists = None
+    p_album_id = album_incr
+    p_album_name = wrap_quotes(remove_quotes(album_info["name"]))
+    p_album_image_link = wrap_quotes(album_info["images"][0]["url"])
+    p_is_explicit = "true"
+    p_artist_ids = []
+    for a in album_info["artists"]:
+        if a["id"] in artist_sid_to_usid:
+            p_artist_ids.append(artist_sid_to_usid[a["id"]])
+    p_artist_ids = wrap_quotes(",".join(p_artist_ids))
 
-c2 = connection.cursor()
-query = "SELECT COUNT(*) from song;"
-c2.execute(query)
-response = c2.fetchall()
-pprint.pprint(response)
+    p_song_ids = []
+    for t in album_info["tracks"]["items"]:
+        if t["id"] in track_sid_to_usid:
+            p_song_ids.append(track_sid_to_usid[t["id"]])
+    p_song_ids = wrap_quotes(",".join(p_song_ids))
+    query = f"call AddAlbumAndDets({p_album_id}, {p_album_name}, {p_album_image_link}, {p_is_explicit}, {p_artist_ids}, {p_song_ids});"
+    # print(query)
+    c1.execute(query)
+    album_incr += 1
+
+    """ 
+    CREATE PROCEDURE AddAlbumAndDets(
+	IN p_album_id INT,
+    IN p_album_name VARCHAR(200),
+    IN p_album_image_link VARCHAR(600),
+    IN p_is_explicit boolean,
+    IN p_artist_ids TEXT,
+    IN p_song_ids TEXT
+    """
