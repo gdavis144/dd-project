@@ -13,7 +13,42 @@ drop table if exists friend_requests;
 DROP TABLE IF EXISTS user;
 DROP TABLE IF EXISTS artist;
 DROP TABLE IF EXISTS producer;
+/*
+Tables in this schema:
 
+    album(album_id: int, album_name: varchar(200), album_image_link: varchar(600), is_explicit: bool) -- stores records of albums
+    genre(genre_name: varchar(24)) -- stores different music genres
+    artist(artist_id: int, stage_name: varchar(255), follower_count: int) -- stores artist profiles
+    users(username: varchar(255), email_address: varchar(255), password: varchar(255), artist_id: int, profile_image: varchar(600)) -- stores user accounts mapped to artist profiles
+    playlist(playlist_id: int, playlist_name: varchar(24), cover_image_url: varchar(600), like_count: int, is_public: bool, creator: varchar(255)) -- stores user playlists
+    producer(email_address: varchar(255), producer_name: varchar(255), company_name: varchar(255)) -- stores producer profiles
+    song(sid: int, song_name: varchar(200), length: int, date_added: date, cover_image_link: varchar(600), streaming_link: varchar(600), album_id: int, producer_email: varchar(255)) -- stores song details
+    artist_creates_song(artist_id: int, sid: int) -- maps artists to the songs they created
+    playlist_contains_song(playlist_id: int, sid: int) -- maps songs to the playlists they are included in
+    song_is_genre(genre_name: varchar(24), sid: int) -- maps songs to their genres
+    user_follows_artist(username: varchar(255), artist_id: int) -- tracks which users follow which artists
+    artist_creates_album(album_id: int, artist_id: int) -- maps albums to the artists who created them
+    user_likes_playlist(username: varchar(255), playlist_id: int) -- tracks which users liked which playlists
+    producer_produces_song(producer_email: varchar(255), song_id: int) -- maps producers to the songs they produced
+    friend_requests(requester: varchar(255), requestee: varchar(255), status: enum('pending', 'accepted')) -- stores friend requests between users
+*/
+
+-- Procedures:
+/*
+    get_songs() -- returns all songs in the database ordered by date_added descending
+    add_song(p_artist_id, p_song_name, ...) -- adds a new song to the database and maps it to the specified artist
+    DeleteSong(p_sid) -- deletes the specified song and its associated album if it was the last song in that album
+    AddUser(p_username, p_email, p_password, p_profile_image, p_stage_name) -- adds a new user account and creates an associated artist profile
+    DeleteUser(p_username) -- deletes the specified user account and their associated artist profile
+    follow_artist(p_artist_id, p_username) -- marks that the specified user is following the specified artist
+    unfollow_artist(p_artist_id, p_username) -- marks that the specified user is no longer following the specified artist
+    FollowUnfollowArtist(p_username, p_stage_name, p_action) -- follows or unfollows an artist based on the specified action ('follow' or 'unfollow')
+    AddAlbum(p_album_name, p_album_image_link, p_is_explicit, p_stage_name, song_ids) -- adds a new album and optionally links it to an artist and existing songs
+    SendFriendRequest(p_requester, p_requestee) -- sends a friend request from one user to another
+    AcceptFriendRequest(p_requester, p_requestee) -- accepts a pending friend request between two users
+    DeclineFriendRequest(p_requester, p_requestee) -- declines a pending friend request between two users
+    AddingSongToPlaylist(p_sid, p_playlist_id) -- adds a song to the specified playlist if it doesn't already exist in that playlist
+*/
 
 create table album (
     album_id int auto_increment primary key,

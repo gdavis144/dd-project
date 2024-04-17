@@ -45,7 +45,13 @@ visited_songs = set()
 visited_artists = set()
 visited_albums = set()
 
-
+first_q = "call AddUser('ADMIN_000001', 'ADMIN-EMAIL@GMAIL.COM', 'password', 'https://pbs.twimg.com/media/GLOrE46WIAAtt8E?format=jpg&name=large', 'ADMINS');"
+# take note of:
+# add_song(p_artist_id, p_song_name, ...) -- adds a new song to the database and maps it to the specified artist
+# AddAlbum(p_album_name, p_album_image_link, p_is_explicit, p_stage_name, song_ids) -- adds a new album and optionally links it to an artist and existing songs
+# AddingSongToPlaylist(p_sid, p_playlist_id) -- adds a song to the specified playlist if it doesn't already exist in that playlist
+artist_to_dbid = {}
+artist_incr = 100
 while playlists:
     artist_list = []
 
@@ -73,13 +79,13 @@ while playlists:
         p_name = playlistdata["name"].replace('"', "").replace("'", "")
         p_image = playlistdata["images"][0]["url"]
         p_followers = playlistdata["followers"]["total"]
-        playlist_q = f"insert into playlist (playlist_name, cover_image_url, like_count, is_public) values ('{p_name}', '{p_image}', {p_followers}, true, )"
+        playlist_q = f"insert into playlist (playlist_name, cover_image_url, like_count, is_public, creator) values ('{p_name}', '{p_image}', {p_followers}, true, 'ADMIN_000001')"
         try:
             c1.execute(playlist_q)
             response = c1.fetchall()
         except pymysql.Error as e:
             print(playlist_q)
-            # raise e
+            raise e
             continue
 
         sleep(1)
@@ -92,15 +98,6 @@ while playlists:
                 s = song["track"]
                 # pprint.pprint(s)
                 if s:
-                    # grab artist info
-                    artist_id = s["artists"][0]["id"]
-                    for a in s["artists"]:
-                        if (
-                            a["id"] not in artist_list
-                            and a["id"] not in visited_artists
-                        ):
-                            artist_list.append(a["id"])
-                            visited_artists.add(a["id"])
 
                     # album too why not
                     album_id = s["album"]["id"]
