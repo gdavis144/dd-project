@@ -1,5 +1,5 @@
 import type { NextAuthConfig } from 'next-auth';
- 
+
 export const authConfig = {
   pages: {
     signIn: '/login',
@@ -16,13 +16,15 @@ export const authConfig = {
       }
       return true;
     },
-    session: ({ session, token}) => ({
+    session: ({ session, token }) => {
+      return {
         ...session,
         user: {
-            ...session.user,
-            id: token.sub,
-        }
-    }),
+          ...session.user,
+          id: token.sub,
+        },
+      };
+    },
   },
   providers: [], // Add providers with an empty array for now
   secret: process.env.JWT_SECRET,

@@ -89,13 +89,13 @@ export async function createSong(prevState: State, formData: FormData) {
   redirect('/dashboard/songs');
 }
 
-export async function deleteSong(id: string) {
+export async function deleteSong(id: number) {
   try {
-    await sql`DELETE FROM invoices WHERE id = ${id}`;
-    revalidatePath('/dashboard/invoices');
-    return { message: 'Deleted Invoice.' };
+    await executeProcedure(`CALL DeleteSong(${id});`);
+    revalidatePath('/dashboard/song');
+    return { message: 'Deleted Song.' };
   } catch (error) {
-    return { message: 'Database Error: Failed to Delete Invoice.' };
+    return { message: 'Database Error: Failed to Delete Song.' };
   }
 }
 

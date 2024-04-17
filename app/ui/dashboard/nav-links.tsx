@@ -25,11 +25,6 @@ const links = [
     href: '/dashboard/playlists',
     icon: FolderIcon,
   },
-  {
-    name: 'Albums',
-    href: '/dashboard/albums',
-    icon: CircleStackIcon,
-  },
   { name: 'Users', href: '/dashboard/users', icon: UserGroupIcon },
 ];
 
