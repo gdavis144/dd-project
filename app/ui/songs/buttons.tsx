@@ -1,4 +1,4 @@
-import { PencilIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, PlayIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { deleteSong as deleteSong, followArtist } from '@/app/lib/actions';
 
@@ -14,13 +14,13 @@ export function CreateSong() {
   );
 }
 
-export function UpdateSong({ id }: { id: string }) {
+export function PlaySong({ link }: { link: string }) {
   return (
     <Link
-      href={`/dashboard/songs/${id}/edit`}
+      href={link || '/dashboard/songs'}
       className="rounded-md border p-2 hover:bg-gray-100"
     >
-      <PencilIcon className="w-5" />
+      <PlayIcon className="w-5" />
     </Link>
   );
 }

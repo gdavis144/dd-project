@@ -4,6 +4,8 @@ import {
   UserGroupIcon,
   HomeIcon,
   MusicalNoteIcon,
+  FolderIcon,
+  CircleStackIcon,
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -17,6 +19,16 @@ const links = [
     name: 'Songs',
     href: '/dashboard/songs',
     icon: MusicalNoteIcon,
+  },
+  {
+    name: 'Playlists',
+    href: '/dashboard/playlists',
+    icon: FolderIcon,
+  },
+  {
+    name: 'Albums',
+    href: '/dashboard/albums',
+    icon: CircleStackIcon,
   },
   { name: 'Users', href: '/dashboard/users', icon: UserGroupIcon },
 ];
