@@ -1,5 +1,5 @@
 import Image from 'next/image';
-import { UpdateSong, DeleteSong } from '@/app/ui/songs/buttons';
+import { DeleteSong, PlaySong } from '@/app/ui/songs/buttons';
 import InvoiceStatus from '@/app/ui/songs/status';
 import { formatDateToLocal, formatCurrency } from '@/app/lib/utils';
 import { fetchFilteredSongs } from '@/app/lib/data';
@@ -47,7 +47,7 @@ export default async function SongsTable({
                     <p>{formatDateToLocal(song.date_added)}</p>
                   </div>
                   <div className="flex justify-end gap-2">
-                    <UpdateSong id={song.sid} />
+                    <PlaySong link={song.streaming_link} />
                     <DeleteSong id={song.sid} />
                   </div>
                 </div>
@@ -107,7 +107,7 @@ export default async function SongsTable({
                   </td> */}
                   <td className="whitespace-nowrap py-3 pl-6 pr-3">
                     <div className="flex justify-end gap-3">
-                      <UpdateSong id={song.sid} />
+                      <PlaySong link={song.streaming_link} />
                       <DeleteSong id={song.sid} />
                     </div>
                   </td>

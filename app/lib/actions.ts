@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation';
 import { signIn } from '@/auth';
 import { AuthError } from 'next-auth';
 import { executeProcedure } from './data';
+import { Artist } from './definitions';
 
 const FormSchema = z.object({
   sid: z.string(),
@@ -60,9 +61,22 @@ export async function createSong(prevState: State, formData: FormData) {
 
   // Insert data into the database
   try {
-    console.log({ song_name, length, cover_image_link, streaming_link, album_id });
-    await executeProcedure(`
-    (${song_name}, ${length}, ${date}, ${cover_image_link? cover_image_link: null}, ${streaming_link? streaming_link: null}, ${album_id? album_id : null});`)
+    const result = await executeProcedure(`CALL get_artist_from_user('${process.env.CURRENT_USER}')`);
+    const artist = result[0] as Artist; 
+    const artist_id = artist[0].artist_id;
+    if (artist_id) {
+        const album = album_id ? `${album_id}` : null
+        await executeProcedure(`CALL add_song
+            (${artist_id}, 
+            '${song_name}', 
+            ${length}, 
+            '${date}', 
+            '${cover_image_link? cover_image_link: null}', 
+            '${streaming_link? streaming_link: null}', 
+            ${album});`)
+    } else {
+        throw new Error("Could not find artist for current user");
+    }
   } catch (error) {
     // If a database error occurs, return a more specific error.
     return {
@@ -73,38 +87,6 @@ export async function createSong(prevState: State, formData: FormData) {
   // Revalidate the cache for the invoices page and redirect the user.
   revalidatePath('/dashboard/songs');
   redirect('/dashboard/songs');
-}
-
-const UpdateSong = FormSchema.omit({ id: true, date: true });
-
-export async function updateSong(id: string, formData: FormData) {
-  const {
-    song_name,
-    cover_image_link,
-    length,
-    streaming_link,
-    album_id,
-  } = UpdateSong.parse({
-    song_name: formData.get('song_name'),
-    cover_image_link: formData.get('cover_image_link'),
-    length: formData.get('length'),
-    streaming_link: formData.get('streaming_link'),
-    album_id: formData.get('album_id'),
-  });
-
-  try {
-    await sql`
-          UPDATE song
-          SET length = ${length}, song_name = ${song_name}, cover_image_link = ${cover_image_link}, streaming_link = ${streaming_link},
-          album_id = ${album_id}
-          WHERE id = ${id}
-        `;
-  } catch (error) {
-    return { message: 'Database Error: Failed to Update Invoice.' };
-  }
-
-  revalidatePath('/dashboard/invoices');
-  redirect('/dashboard/invoices');
 }
 
 export async function deleteSong(id: string) {
