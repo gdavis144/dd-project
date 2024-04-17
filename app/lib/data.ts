@@ -128,13 +128,15 @@ export async function fetchArtistSongs(artist_id: number) {
 
 export async function fetchUserPlaylists() {
   noStore();
-  // try {
-  //   const data = (await executeProcedure(`SELECT playlist.* FROM playlist J ('${process.env.CURRENT_USER}')`)) as Album[];
-  //   return data[0] as unknown as Playlist[];
-  // } catch (error) {
-  //   console.error('Database Error:', error);
-  //   throw new Error('Failed to fetch albums for the user.');
-  // }
+  try {
+    const data = await executeProcedure(
+      `SELECT playlist.* FROM playlist WHERE playlist.creator = '${process.env.CURRENT_USER}';`,
+    );
+    return data as unknown as Playlist[];
+  } catch (error) {
+    console.error('Database Error:', error);
+    throw new Error('Failed to fetch playlist for the user.');
+  }
 }
 
 const ITEMS_PER_PAGE = 6;
@@ -146,10 +148,12 @@ export async function fetchFilteredSongs(query: string, currentPage: number) {
     const q = `
       SELECT
         song.*,
-        artist.*
+        artist.*,
+        album.*
         FROM artist_creates_song
         JOIN song ON artist_creates_song.sid = song.sid
         JOIN artist on artist_creates_song.artist_id = artist.artist_id
+        JOIN album on album.album_id = song.album_id
         WHERE
           artist.stage_name LIKE '${`%${query}%`}' OR
           song.song_name LIKE '${`%${query}%`}'
