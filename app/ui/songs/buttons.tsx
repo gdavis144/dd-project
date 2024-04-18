@@ -1,6 +1,6 @@
-import { PencilIcon, PlayIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { MinusIcon, PencilIcon, PlayIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
-import { deleteSong, followArtist } from '@/app/lib/actions';
+import { deleteSong, followArtist, unfollowArtist } from '@/app/lib/actions';
 
 export function CreateSong() {
   return (
@@ -41,9 +41,21 @@ export function FollowArtist({ follower_id, artist_id }: { follower_id: string, 
   const followArtistId = followArtist.bind(null, follower_id, artist_id);
   return (
     <form action={followArtistId}>
-      <button className="rounded-md border p-2 hover:bg-gray-100">
+      <button className="rounded-md border p-2 hover:bg-gray-100 hover:text-green-800">
         <span className="sr-only">Follow</span>
         <PlusIcon className="w-5" />
+      </button>
+    </form>
+  );
+}
+
+export function UnfollowArtist({ follower_id, artist_id }: { follower_id: string, artist_id: number }) {
+  const unfollowArtistId = unfollowArtist.bind(null, follower_id, artist_id);
+  return (
+    <form action={unfollowArtistId}>
+      <button className="rounded-md border p-2 hover:bg-gray-100 hover:text-green-800">
+        <span className="sr-only">Follow</span>
+        <MinusIcon className="w-5" />
       </button>
     </form>
   );

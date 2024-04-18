@@ -14,15 +14,22 @@ const FormSchema = z.object({
     invalid_type_error: 'Please enter a song name.',
   }),
   length: z.coerce.number().gt(0, {
-    message: 'Please enter a length in seconds.' 
+    message: 'Please enter a length in seconds.',
   }),
-  cover_image_link: z.string({
-    invalid_type_error: 'Please select a cover image.',
-  }).optional(),
-  streaming_link: z.string({
-    invalid_type_error: 'Please enter a streaming link.',
-  }).optional(),
-  album_id: z.coerce.number().gt(0, { message: 'Please enter a valid album.' }).optional(),
+  cover_image_link: z
+    .string({
+      invalid_type_error: 'Please select a cover image.',
+    })
+    .optional(),
+  streaming_link: z
+    .string({
+      invalid_type_error: 'Please enter a streaming link.',
+    })
+    .optional(),
+  album_id: z.coerce
+    .number()
+    .gt(0, { message: 'Please enter a valid album.' })
+    .optional(),
 });
 
 export type State = {
@@ -56,26 +63,29 @@ export async function createSong(prevState: State, formData: FormData) {
   }
 
   // Prepare data for insertion into the database
-  const { song_name, length, cover_image_link, streaming_link, album_id } = validatedFields.data;
+  const { song_name, length, cover_image_link, streaming_link, album_id } =
+    validatedFields.data;
   const date = new Date().toISOString().split('T')[0];
 
   // Insert data into the database
   try {
-    const result = await executeProcedure(`CALL get_artist_from_user('${process.env.CURRENT_USER}')`);
-    const artist = result[0] as Artist; 
+    const result = await executeProcedure(
+      `CALL get_artist_from_user('${process.env.CURRENT_USER}')`,
+    );
+    const artist = result[0] as Artist;
     const artist_id = artist[0].artist_id;
     if (artist_id) {
-        const album = album_id ? `${album_id}` : null
-        await executeProcedure(`CALL add_song
-            (${artist_id}, 
-            '${song_name}', 
-            ${length}, 
-            '${date}', 
-            '${cover_image_link? cover_image_link: null}', 
-            '${streaming_link? streaming_link: null}', 
-            ${album});`)
+      const album = album_id ? `${album_id}` : null;
+      await executeProcedure(`CALL add_song
+          (${artist_id},
+          '${song_name}',
+          ${length},
+          '${date}',
+          '${cover_image_link? cover_image_link: null}',
+          '${streaming_link? streaming_link: null}',
+          ${album});`);
     } else {
-        throw new Error("Could not find artist for current user");
+      throw new Error('Could not find artist for current user');
     }
   } catch (error) {
     // If a database error occurs, return a more specific error.
@@ -101,11 +111,25 @@ export async function deleteSong(id: number) {
 
 export async function followArtist(follower_id: string, artist_id: number) {
   try {
-    await sql`call`;
+    await executeProcedure(
+      `call follow_artist(${artist_id}, '${follower_id}');`,
+    );
     revalidatePath(`/dashboard/users/${artist_id}`);
     return { message: 'Followed artist.' };
   } catch (error) {
     return { message: 'Database Error: Failed to follow artist.' };
+  }
+}
+
+export async function unfollowArtist(follower_id: string, artist_id: number) {
+  try {
+    await executeProcedure(
+      `call unfollow_artist(${artist_id}, '${follower_id}');`,
+    );
+    revalidatePath(`/dashboard/users/${artist_id}`);
+    return { message: 'Unfollowed artist.' };
+  } catch (error) {
+    return { message: 'Database Error: Failed to unfollow artist.' };
   }
 }
 

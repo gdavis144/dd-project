@@ -5,7 +5,6 @@ import { notFound, redirect } from "next/navigation";
 
 export default async function Page() {
   const currentUser = process.env.CURRENT_USER;
-  console.log(currentUser);
   if (currentUser) {
     const artist = await fetchArtistIdByUsername(currentUser);
     if (artist) {

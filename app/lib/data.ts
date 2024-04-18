@@ -200,6 +200,18 @@ export async function fetchPlaylistById(playlist_id: number) {
   }
 }
 
+export async function fetchIsFollowing(follower_id: string, artist_id: number) {
+  try {
+    const bool = await executeProcedure(
+      `call is_user_following('${follower_id}', ${artist_id});`,
+    );
+    return bool[0][0].true;
+  } catch (error) {
+    console.error('Failed to fetch user:', error);
+    throw new Error('Failed to fetch user.');
+  }
+}
+
 export async function fetchFilteredPlaylistSongs(
   playlist_id: number,
   currentPage: number,
@@ -223,7 +235,16 @@ export async function fetchFilteredPlaylistSongs(
 export async function fetchSongsPagesPlaylist(playlist_id: number) {
   noStore();
   try {
-    const data = fetchFilteredPlaylistSongs.length;
+    const result = executeProcedure(`SELECT
+    song.*,
+    artist.*
+    FROM artist_creates_song
+    JOIN song ON artist_creates_song.sid = song.sid
+    JOIN artist on artist_creates_song.artist_id = artist.artist_id
+    JOIN playlist_contains_song ON song.sid = playlist_contains_song.sid
+    WHERE
+    playlist_contains_song.playlist_id = ${playlist_id};`);
+    const data = result.length;
     const totalPages = Math.ceil(Number(data) / ITEMS_PER_PAGE);
     return totalPages;
   } catch (error) {
@@ -235,8 +256,19 @@ export async function fetchSongsPagesPlaylist(playlist_id: number) {
 export async function fetchSongsPages(query: string) {
   noStore();
   try {
-    const data = fetchFilteredSongs.length;
-    const totalPages = Math.ceil(Number(data) / ITEMS_PER_PAGE);
+    const data = await executeProcedure(`SELECT
+      song.*,
+      artist.*,
+      album.*
+      FROM artist_creates_song
+      JOIN song ON artist_creates_song.sid = song.sid
+      JOIN artist on artist_creates_song.artist_id = artist.artist_id
+      left JOIN album on album.album_id = song.album_id
+      WHERE
+        artist.stage_name LIKE '${`%${query}%`}' OR
+        song.song_name LIKE '${`%${query}%`}';`);
+    const data_num = data.length;
+    const totalPages = Math.ceil(Number(data_num) / ITEMS_PER_PAGE);
     return totalPages;
   } catch (error) {
     console.error('Database Error:', error);
@@ -247,7 +279,15 @@ export async function fetchSongsPages(query: string) {
 export async function fetchPlaylistPages(query: string) {
   noStore();
   try {
-    const data = fetchFilteredPlaylists.length;
+    const result = await executeProcedure(`SELECT
+    user.*,
+    playlist.*
+    FROM playlist
+    JOIN user on playlist.creator = user.username
+    WHERE
+      playlist.playlist_name LIKE '${`%${query}%`}' OR
+      user.username LIKE '${`%${query}%`}'`);
+    const data = result.length;
     const totalPages = Math.ceil(Number(data) / ITEMS_PER_PAGE);
     return totalPages;
   } catch (error) {
