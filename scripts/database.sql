@@ -223,6 +223,28 @@ DELIMITER $$
     END$$
 DELIMITER ;
 
+
+-- add songs to playlist
+DROP PROCEDURE IF EXISTS create_playlist_from_songs;
+DELIMITER //
+
+CREATE PROCEDURE create_playlist_from_songs(
+	IN p_id INT,
+    IN p_playlist_name VARCHAR(96),
+    IN p_cover_image_url VARCHAR(600),
+    IN p_like_count INT,
+    IN p_is_public BOOLEAN,
+    IN p_creator VARCHAR(255),
+    IN p_song_ids TEXT
+)
+BEGIN
+    INSERT INTO playlist (playlist_id, playlist_name, cover_image_url, like_count, is_public, creator)
+    VALUES (p_id, p_playlist_name, p_cover_image_url, p_like_count, p_is_public, p_creator);
+    -- create table playlist_contains_song (primary key(playlist_id, sid),
+    INSERT INTO playlist_contains_song (playlist_id, sid) select p_id, sid from song where FIND_IN_SET(sid, p_song_ids);
+END //
+
+DELIMITER ;
 /*CHANGED*/
 drop procedure if exists DeleteSong;
 DELIMITER $$
@@ -638,18 +660,64 @@ END$$
 
 DELIMITER ;
 
-/* gets albums for this user */
-drop procedure if exists get_user_albums;
+
+drop procedure if exists fetch_filtered_playlists;
 DELIMITER $$
-CREATE PROCEDURE get_user_albums(
-    IN p_username VARCHAR(255)
+CREATE PROCEDURE fetch_filtered_playlists(
+	IN p_query text,
+    IN p_items int,
+    IN p_offset int
 )
-BEGIN
-    SELECT album.* FROM user join artist on user.artist_id = artist.artist_id 
-		join artist_creates_album on artist_creates_album.artist_id = artist.artist_id
-        join album on album.album_id = artist_creates_album.album_id;
+BEGIN 
+    SELECT
+        user.*,
+        playlist.*
+        FROM playlist
+        JOIN user on playlist.creator = user.username
+        WHERE
+          playlist.playlist_name LIKE p_query OR
+          user.username LIKE p_query
+      ORDER BY playlist.like_count DESC
+      LIMIT p_items OFFSET p_offset;
 END$$
 DELIMITER ;
+
+drop procedure if exists fetch_filtered_playlist_songs;
+DELIMITER $$
+CREATE PROCEDURE fetch_filtered_playlist_songs(
+	IN p_playlist_id int,
+    IN p_items int,
+    IN p_offset int
+)
+BEGIN 
+    SELECT
+        song.*,
+        artist.*
+        FROM artist_creates_song
+        JOIN song ON artist_creates_song.sid = song.sid
+        JOIN artist on artist_creates_song.artist_id = artist.artist_id
+        JOIN playlist_contains_song ON song.sid = playlist_contains_song.sid
+        WHERE
+        playlist_contains_song.playlist_id = p_playlist_id
+      ORDER BY song.date_added DESC
+      LIMIT p_items OFFSET p_offset;
+END$$
+DELIMITER ;
+
+drop procedure if exists is_user_following;
+DELIMITER $$
+CREATE PROCEDURE is_user_following(
+	IN p_username TEXT,
+    IN p_artist_id int
+)
+BEGIN 
+	IF (SELECT COUNT(*) FROM user_follows_artist where username = p_username and artist_id = p_artist_id)
+    THEN SELECT true;
+    ELSE SELECT false;
+    END IF;
+END$$
+DELIMITER ;
+
 
 /* Insert data into the genre table */
 INSERT INTO genre (genre_name) VALUES
