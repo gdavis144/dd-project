@@ -16,10 +16,10 @@ Please set HOST, USER, and PASSWORD to your connection details, and be sure to g
 3. Open a terminal, and navigate to the /nextjs-dashboard folder.\
 4. Run `npm run dev`. You may need to install npm, instructions are at https://docs.npmjs.com/downloading-and-installing-node-js-and-npm\
 6. Navigate to localhost:3000 in a browser - previous command will not show as complete until this is done.\
-7. Log in with the below credentials:\
+7. Log in with the below credentials:
 
 USER: user1\
-PASSWORD: password1\
+PASSWORD: password1
 
 8. Horray! You've logged in. Because of the dev environment, each page takes time to load, please be patient with the pages <3.\
 
