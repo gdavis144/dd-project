@@ -8,7 +8,7 @@ import { executeProcedure } from './app/lib/data';
  
 async function getUser(email: string): Promise<User | undefined> {
   try {
-    const user = await executeProcedure(`SELECT * FROM user WHERE email_address='${email}';`);
+    const user = await executeProcedure(`SELECT * FROM user WHERE username='${email}';`);
     return user[0];
   } catch (error) {
     console.error('Failed to fetch user:', error);
