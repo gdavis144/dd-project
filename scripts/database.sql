@@ -14,7 +14,6 @@ DROP TABLE IF EXISTS user;
 DROP TABLE IF EXISTS artist;
 DROP TABLE IF EXISTS producer;
 
-
 create table album (
     album_id int auto_increment primary key,
     album_name varchar(200) not null,
@@ -141,16 +140,6 @@ CREATE TABLE user_likes_playlist (
 	CONSTRAINT user_Like FOREIGN KEY (username) REFERENCES user(username)
 ON DELETE CASCADE, 
 CONSTRAINT playlist_like FOREIGN KEY (playlist_id) REFERENCES playlist(playlist_id) ON DELETE CASCADE
-);
-
-CREATE TABLE producer_produces_song (
-	PRIMARY KEY (producer_email, song_id),
-	producer_email VARCHAR(255) not null,
-	song_id INT not null, 
-	FOREIGN KEY (producer_email) REFERENCES producer(email_address) 
-	ON DELETE CASCADE,
-	FOREIGN KEY (song_id) REFERENCES song(sid) 
-	ON DELETE CASCADE
 );
 
 -- create a table for frined relationships
@@ -818,9 +807,3 @@ INSERT INTO user_likes_playlist (username, playlist_id) VALUES
 ('user1', 1),
 ('user2', 2),
 ('user3', 3);
-
-/* Insert data into the producer_produces_song table */
-INSERT INTO producer_produces_song (producer_email, song_id) VALUES
-('producer1@email.com', 1),
-('producer2@email.com', 2),
-('producer3@email.com', 3);
