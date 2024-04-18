@@ -638,6 +638,19 @@ END$$
 
 DELIMITER ;
 
+/* gets albums for this user */
+drop procedure if exists get_user_albums;
+DELIMITER $$
+CREATE PROCEDURE get_user_albums(
+    IN p_username VARCHAR(255)
+)
+BEGIN
+    SELECT album.* FROM user join artist on user.artist_id = artist.artist_id 
+		join artist_creates_album on artist_creates_album.artist_id = artist.artist_id
+        join album on album.album_id = artist_creates_album.album_id;
+END$$
+DELIMITER ;
+
 /* Insert data into the genre table */
 INSERT INTO genre (genre_name) VALUES
 ('Rock'),
