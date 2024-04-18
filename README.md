@@ -14,7 +14,7 @@ AUTH_URL=http://localhost:3000/api/auth\
 Please set HOST, USER, and PASSWORD to your connection details, and be sure to give yourself read/write access to the projdb database in MySql.\
 2. Start your MySql Server, and run the dump file provided in nextjs-dashboard/scripts/dump.sql\
 3. Open a terminal, and navigate to the /nextjs-dashboard folder.\
-4. Run `npm run dev`. You may need to install npm, instructions are at https://docs.npmjs.com/downloading-and-installing-node-js-and-npm\
+4. Run `npm run dev`. You may need to install npm, instructions are at https://docs.npmjs.com/downloading-and-installing-node-js-and-npm \
 6. Navigate to localhost:3000 in a browser - previous command will not show as complete until this is done.\
 7. Log in with the below credentials:
 
