@@ -328,6 +328,7 @@ DELIMITER ;
 
 
 -- add songs to playlist
+DROP PROCEDURE IF EXISTS create_playlist_from_songs;
 DELIMITER //
 
 CREATE PROCEDURE create_playlist_from_songs(
@@ -790,6 +791,49 @@ BEGIN
 END$$
 DELIMITER ;
 
+drop procedure if exists fetch_filtered_playlists;
+DELIMITER $$
+CREATE PROCEDURE fetch_filtered_playlists(
+	IN p_query text,
+    IN p_items int,
+    IN p_offset int
+)
+BEGIN 
+    SELECT
+        user.*,
+        playlist.*
+        FROM playlist
+        JOIN user on playlist.creator = user.username
+        WHERE
+          playlist.playlist_name LIKE p_query OR
+          user.username LIKE p_query
+      ORDER BY playlist.like_count DESC
+      LIMIT p_items OFFSET p_offset;
+END$$
+DELIMITER ;
+
+drop procedure if exists fetch_filtered_playlist_songs;
+DELIMITER $$
+CREATE PROCEDURE fetch_filtered_playlist_songs(
+	IN p_playlist_id int,
+    IN p_items int,
+    IN p_offset int
+)
+BEGIN 
+    SELECT
+        song.*,
+        artist.*
+        FROM artist_creates_song
+        JOIN song ON artist_creates_song.sid = song.sid
+        JOIN artist on artist_creates_song.artist_id = artist.artist_id
+        JOIN playlist_contains_song ON song.sid = playlist_contains_song.sid
+        WHERE
+        playlist_contains_song.playlist_id = p_playlist_id
+      ORDER BY song.date_added DESC
+      LIMIT p_items OFFSET p_offset;
+END$$
+DELIMITER ;
+
 drop procedure if exists is_user_following;
 DELIMITER $$
 CREATE PROCEDURE is_user_following(
@@ -804,23 +848,6 @@ BEGIN
 END$$
 DELIMITER ;
 
--- functions
-
-SELECT
-song.*,
-artist.*,
-album.*
-FROM artist_creates_song
-JOIN song ON artist_creates_song.sid = song.sid
-JOIN artist on artist_creates_song.artist_id = artist.artist_id
-JOIN album on album.album_id = song.album_id
-WHERE
-  artist.stage_name LIKE '%h%' OR
-  song.song_name LIKE '%h%'
-ORDER BY song.date_added DESC
-LIMIT 6 OFFSET 0;
-
-call fetch_filtered_songs('%h%', 6, 0);
 
 /* Insert data into the genre table */
 INSERT INTO genre (genre_name) VALUES

@@ -145,25 +145,11 @@ export async function fetchFilteredSongs(query: string, currentPage: number) {
   const offset = (currentPage - 1) * ITEMS_PER_PAGE;
 
   try {
-    const q = `
-      SELECT
-        song.*,
-        artist.*,
-        album.*
-        FROM artist_creates_song
-        JOIN song ON artist_creates_song.sid = song.sid
-        JOIN artist on artist_creates_song.artist_id = artist.artist_id
-        JOIN album on album.album_id = song.album_id
-        WHERE
-          artist.stage_name LIKE '${`%${query}%`}' OR
-          song.song_name LIKE '${`%${query}%`}'
-      ORDER BY song.date_added DESC
-      LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}
+    const w = `
+    call fetch_filtered_songs('${`%${query}%`}', ${ITEMS_PER_PAGE}, ${offset});
     `;
-
-    const data = await executeProcedure(q);
-
-    return data;
+    const data = await executeProcedure(w);
+    return data[0];
   } catch (error) {
     console.error('Database Error:', error);
     throw new Error('Failed to fetch songs.');
@@ -179,21 +165,12 @@ export async function fetchFilteredPlaylists(
 
   try {
     const q = `
-      SELECT
-        user.*,
-        playlist.*
-        FROM playlist
-        JOIN user on playlist.creator = user.username
-        WHERE
-          playlist.playlist_name LIKE '${`%${query}%`}' OR
-          user.username LIKE '${`%${query}%`}'
-      ORDER BY playlist.like_count DESC
-      LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}
+      call fetch_filtered_playlists('${`%${query}%`}', ${ITEMS_PER_PAGE}, ${offset});
     `;
 
     const data = await executeProcedure(q);
 
-    return data;
+    return data[0];
   } catch (error) {
     console.error('Database Error:', error);
     throw new Error('Failed to fetch playlists.');
@@ -232,22 +209,11 @@ export async function fetchFilteredPlaylistSongs(
 
   try {
     const q = `
-      SELECT
-        song.*,
-        artist.*
-        FROM artist_creates_song
-        JOIN song ON artist_creates_song.sid = song.sid
-        JOIN artist on artist_creates_song.artist_id = artist.artist_id
-        JOIN playlist_contains_song ON song.sid = playlist_contains_song.sid
-        WHERE
-        playlist_contains_song.playlist_id = ${playlist_id}
-      ORDER BY song.date_added DESC
-      LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}
+      call fetch_filtered_playlist_songs(${playlist_id}, ${ITEMS_PER_PAGE}, ${offset});
     `;
 
     const data = await executeProcedure(q);
-
-    return data;
+    return data[0];
   } catch (error) {
     console.error('Database Error:', error);
     throw new Error('Failed to fetch songs.');
@@ -290,6 +256,11 @@ export async function fetchPlaylistPages(query: string) {
   }
 }
 
+/**
+ *
+ * not ours
+ * we don't care to maintain
+ */
 export async function fetchInvoiceById(id: string) {
   noStore();
   try {
@@ -315,7 +286,6 @@ export async function fetchInvoiceById(id: string) {
     throw new Error('Failed to fetch invoice.');
   }
 }
-
 export async function fetchCustomers() {
   try {
     const data = await sql<CustomerField>`
@@ -331,48 +301,5 @@ export async function fetchCustomers() {
   } catch (err) {
     console.error('Database Error:', err);
     throw new Error('Failed to fetch all customers.');
-  }
-}
-
-export async function fetchFilteredCustomers(query: string) {
-  try {
-    const data = await sql<CustomersTableType>`
-		SELECT
-		  customers.id,
-		  customers.name,
-		  customers.email,
-		  customers.image_url,
-		  COUNT(invoices.id) AS total_invoices,
-		  SUM(CASE WHEN invoices.status = 'pending' THEN invoices.amount ELSE 0 END) AS total_pending,
-		  SUM(CASE WHEN invoices.status = 'paid' THEN invoices.amount ELSE 0 END) AS total_paid
-		FROM customers
-		LEFT JOIN invoices ON customers.id = invoices.customer_id
-		WHERE
-		  customers.name ILIKE ${`%${query}%`} OR
-        customers.email ILIKE ${`%${query}%`}
-		GROUP BY customers.id, customers.name, customers.email, customers.image_url
-		ORDER BY customers.name ASC
-	  `;
-
-    const customers = data.rows.map((customer) => ({
-      ...customer,
-      total_pending: formatCurrency(customer.total_pending),
-      total_paid: formatCurrency(customer.total_paid),
-    }));
-
-    return customers;
-  } catch (err) {
-    console.error('Database Error:', err);
-    throw new Error('Failed to fetch customer table.');
-  }
-}
-
-export async function getUser(email: string) {
-  try {
-    const user = await sql`SELECT * FROM users WHERE email=${email}`;
-    return user.rows[0] as User;
-  } catch (error) {
-    console.error('Failed to fetch user:', error);
-    throw new Error('Failed to fetch user.');
   }
 }
