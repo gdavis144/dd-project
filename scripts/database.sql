@@ -660,28 +660,6 @@ END$$
 
 DELIMITER ;
 
-/* gets albums for this user */
-drop procedure if exists get_user_albums;
-DELIMITER $$
-CREATE PROCEDURE get_user_albums(
-    IN p_username VARCHAR(255)
-)
-BEGIN 
-    SELECT
-        song.*,
-        artist.*,
-        album.*
-        FROM artist_creates_song
-        JOIN song ON artist_creates_song.sid = song.sid
-        JOIN artist on artist_creates_song.artist_id = artist.artist_id
-        JOIN album on album.album_id = song.album_id
-        WHERE
-          artist.stage_name LIKE p_query OR
-          song.song_name LIKE p_query
-      ORDER BY song.date_added DESC
-      LIMIT p_items OFFSET p_offset;
-END$$
-DELIMITER ;
 
 drop procedure if exists fetch_filtered_playlists;
 DELIMITER $$
@@ -701,10 +679,6 @@ BEGIN
           user.username LIKE p_query
       ORDER BY playlist.like_count DESC
       LIMIT p_items OFFSET p_offset;
-BEGIN
-    SELECT album.* FROM user join artist on user.artist_id = artist.artist_id 
-		join artist_creates_album on artist_creates_album.artist_id = artist.artist_id
-        join album on album.album_id = artist_creates_album.album_id;
 END$$
 DELIMITER ;
 
