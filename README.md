@@ -6,12 +6,12 @@
 HOST="*your host name*"\
 USER="*your user name*"\
 PASSWORD="*your password*"\
-DB_NAME="music"\
+DB_NAME="projdb"\
 CURRENT_USER="user1"\
 AUTH_SECRET="/sMzZmR3Q30tXFSY8poq3l1hi6piQjEwSDcH1cfNqDc="\
 AUTH_URL=http://localhost:3000/api/auth\
 
-Please set HOST, USER, and PASSWORD to your connection details.
+Please set HOST, USER, and PASSWORD to your connection details, and be sure to give yourself read/write access to the projdb database in MySql.
 2. Start your MySql Server, and run the dump file provided in nextjs-dashboard/scripts/dump.sql
 3. Open a terminal, and navigate to the /nextjs-dashboard folder.
 4. Run `npm run dev`. You may need to install npm, instructions are at https://docs.npmjs.com/downloading-and-installing-node-js-and-npm
@@ -19,7 +19,7 @@ Please set HOST, USER, and PASSWORD to your connection details.
 7. Log in with the below credentials:
 USER: user1
 PASSWORD: password1
-8. Horray! You've logged in. Because of the dev environment, each page takes time to load, please be patient with the pages.
+8. Horray! You've logged in. Because of the dev environment, each page takes time to load, please be patient with the pages <3.
 
 ## Troubleshooting
 1. You may also need to install nextjs or react, installation instructions are below
