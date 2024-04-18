@@ -12,8 +12,6 @@ export default async function SongsTable({
   query: string;
   currentPage: number;
 }) {
-  console.log(query);
-  console.log(currentPage);
   const songs = await fetchFilteredSongs(query, currentPage);
 
   return (

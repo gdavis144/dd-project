@@ -153,7 +153,7 @@ export async function fetchFilteredSongs(query: string, currentPage: number) {
         FROM artist_creates_song
         JOIN song ON artist_creates_song.sid = song.sid
         JOIN artist on artist_creates_song.artist_id = artist.artist_id
-        JOIN album on album.album_id = song.album_id
+        left JOIN album on album.album_id = song.album_id
         WHERE
           artist.stage_name LIKE '${`%${query}%`}' OR
           song.song_name LIKE '${`%${query}%`}'
@@ -226,8 +226,7 @@ export async function fetchPlaylistById(playlist_id: number) {
 export async function fetchIsFollowing(follower_id: string, artist_id: number) {
   try {
     const bool = await executeProcedure(`call is_user_following('${follower_id}', ${artist_id});`);
-    console.log(bool);
-    return bool[0];
+    return bool[0][0].true;
   } catch (error) {
     console.error('Failed to fetch user:', error);
     throw new Error('Failed to fetch user.');
@@ -293,7 +292,7 @@ export async function fetchSongsPages(query: string) {
       FROM artist_creates_song
       JOIN song ON artist_creates_song.sid = song.sid
       JOIN artist on artist_creates_song.artist_id = artist.artist_id
-      JOIN album on album.album_id = song.album_id
+      left JOIN album on album.album_id = song.album_id
       WHERE
         artist.stage_name LIKE '${`%${query}%`}' OR
         song.song_name LIKE '${`%${query}%`}';`);
