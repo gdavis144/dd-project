@@ -23,9 +23,8 @@ create table album (
 );
 
 create table genre (
-    genre_name VARCHAR(24) PRIMARY KEY
+    genre_name VARCHAR(96) PRIMARY KEY
 );
-
 /* need to make subclass */
 CREATE TABLE artist (
     artist_id INT PRIMARY KEY auto_increment,
@@ -101,7 +100,7 @@ create table playlist_contains_song (
 
 create table song_is_genre (
 	primary key(genre_name, sid),
-    genre_name varchar(24) not null,
+    genre_name varchar(96) not null,
     sid int not null,
     foreign key (sid) 
 		references song(sid)
@@ -283,17 +282,34 @@ CREATE PROCEDURE AddUser(
 )
 BEGIN
     /* Check if username or email already exists */
-    IF (SELECT COUNT(*) FROM users WHERE username = p_username OR email_address = p_email) > 0 THEN
+    IF (SELECT COUNT(*) FROM user WHERE username = p_username OR email_address = p_email) > 0 THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Username or Email already exists';
     ELSE
 		INSERT INTO artist (stage_name) values (p_stage_name);
-        INSERT INTO users (username, email_address, password, artist_id, profile_image)
+        INSERT INTO user (username, email_address, password, artist_id, profile_image)
         VALUES (p_username, p_email, p_password, last_insert_id(), p_profile_image);
     END IF;
 END$$
 DELIMITER ;
 
-/* deletes a users (and corresponding artist) */
+drop procedure if exists mark_songs_genre_by_artist;
+delimiter //
+create procedure mark_songs_genre_by_artist(
+	p_artist_id INT,
+    p_genre varchar(96)
+)
+BEGIN
+	IF (select COUNT(genre_name) from genre where genre.genre_name = p_genre) = 0
+    THEN
+		insert into genre values (p_genre);
+	END IF;
+    insert into song_is_genre (genre_name, sid) select p_genre, sid from song 
+    where exists (select * from artist_creates_song where artist_creates_song.artist_id = p_artist_id and artist_creates_song.sid = song.sid) 
+    and not exists (select * from song_is_genre where genre_name = p_genre and song_is_genre.sid = song.sid);
+END //
+DELIMITER ;
+
+/* deletes a user (and corresponding artist) */
 drop procedure if exists DeleteUser;
 DELIMITER $$
 CREATE PROCEDURE DeleteUser(
@@ -301,18 +317,18 @@ CREATE PROCEDURE DeleteUser(
 )
 BEGIN
 	declare u_a_id INT;
-    /* Check if users exists */
-    IF (SELECT COUNT(*) FROM users WHERE username = p_username) = 0 THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'users does not exist';
+    /* Check if user exists */
+    IF (SELECT COUNT(*) FROM user WHERE username = p_username) = 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'user does not exist';
     ELSE
-		select users.artist_id into u_a_id from users where users.username = p_username;
+		select user.artist_id into u_a_id from user where user.username = p_username;
         DELETE FROM artist where artist.artist_id = u_a_id;
-        DELETE FROM users WHERE username = p_username;
+        DELETE FROM user WHERE username = p_username;
     END IF;
 END$$
 DELIMITER ;
 
-/* marks that a users is following an artist */
+/* marks that a user is following an artist */
 DROP PROCEDURE IF EXISTS follow_artist;
 DELIMITER //
 CREATE PROCEDURE follow_artist(
@@ -501,7 +517,7 @@ CREATE PROCEDURE FollowUnfollowArtist(
 BEGIN
     /* Handling the follow action */
     IF p_action = 'follow' THEN
-        /* Check if the users already follows the artist */
+        /* Check if the user already follows the artist */
         IF NOT EXISTS (
             SELECT * FROM user_follows_artist 
             WHERE username = p_username AND stage_name = p_stage_name
@@ -583,7 +599,7 @@ BEGIN
         VALUES (p_requester, p_requestee, 'pending');
     ELSE
         /* Signal error: a request is already pending or a friendship exists */
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'A request already exists or users are already friends';
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'A request already exists or user are already friends';
     END IF;
 END$$
 
@@ -741,7 +757,7 @@ INSERT INTO producer (email_address, producer_name, company_name) VALUES
 ('producer2@email.com', 'Jane Smith', 'Beats Inc.'),
 ('producer3@email.com', 'Michael Johnson', 'Rhythm Studios');
 
-/* Insert data into the users table */
+/* Insert data into the user table */
 INSERT INTO user (username, email_address, password, profile_image, artist_id) VALUES
 ('user1', 'user1@email.com', 'password1', 'https://example.com/user1.jpg', 1),
 ('user2', 'user2@email.com', 'password2', 'https://example.com/user2.jpg', 2),

@@ -227,4 +227,5 @@ for i in tqdm(albums_to_get_to, desc="processing albums"):
 for i in tqdm(authors_genres.keys()):
     for g in authors_genres[i]:
         mini_q = f"call mark_songs_genre_by_artist({str(g)}, {wrap_quotes(remove_quotes(i))});"
+        # print(mini_q)
         c1.execute(mini_q)
